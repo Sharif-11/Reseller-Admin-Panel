@@ -313,7 +313,7 @@ const AdminLayout = () => {
               {openAccordions.shops && (
                 <div className='ml-6 mt-0.5 space-y-0.5'>
                   <NavLink
-                    to='/shops'
+                    to='/dashboard/shops'
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive
@@ -322,31 +322,7 @@ const AdminLayout = () => {
                       }`
                     }
                   >
-                    সকল দোকান
-                  </NavLink>
-                  <NavLink
-                    to='/shops/approvals'
-                    className={({ isActive }) =>
-                      `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
-                        isActive
-                          ? 'bg-indigo-600 text-white'
-                          : 'text-indigo-100 hover:bg-indigo-600/30'
-                      }`
-                    }
-                  >
-                    অনুমোদনের জন্য অপেক্ষমান
-                  </NavLink>
-                  <NavLink
-                    to='/shops/verified'
-                    className={({ isActive }) =>
-                      `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
-                        isActive
-                          ? 'bg-indigo-600 text-white'
-                          : 'text-indigo-100 hover:bg-indigo-600/30'
-                      }`
-                    }
-                  >
-                    যাচাইকৃত দোকান
+                    শপ লিস্ট
                   </NavLink>
                 </div>
               )}
