@@ -1,0 +1,166 @@
+import type { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
+import axios from 'axios'
+import { baseURL } from '../Axios/baseUrl'
+
+export type ApiResponse<T = any> = {
+  success: boolean
+  message?: string
+  statusCode?: number
+  data?: T // This now contains the direct response data
+  error?: any
+  response?: any // Optional: Full response if needed
+}
+
+class ApiClient {
+  private instance: AxiosInstance
+  private static _instance: ApiClient
+
+  private constructor(baseURL: string, config?: AxiosRequestConfig) {
+    this.instance = axios.create({
+      baseURL,
+      timeout: 10000,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      ...config,
+    })
+
+    this.setupInterceptors()
+  }
+
+  public static getInstance(baseURL: string, config?: AxiosRequestConfig): ApiClient {
+    if (!ApiClient._instance) {
+      ApiClient._instance = new ApiClient(baseURL, config)
+    }
+    return ApiClient._instance
+  }
+
+  private setupInterceptors(): void {
+    // Request interceptor remains the same
+    this.instance.interceptors.request.use(
+      config => {
+        const token = localStorage.getItem('token')
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`
+        }
+        return config
+      },
+      error => Promise.reject(error)
+    )
+
+    // Response interceptor
+    this.instance.interceptors.response.use(
+      response => response,
+      (error: AxiosError) => {
+        if (error.response?.status === 401) {
+          console.error('Unauthorized access - redirect to login')
+          // Optional: Add redirect logic here
+        }
+        return Promise.reject(error)
+      }
+    )
+  }
+
+  // Public methods remain the same
+  public async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+    return this.request<T>('get', url, undefined, config)
+  }
+
+  public async post<T = any>(
+    url: string,
+    data?: any,
+    config?: AxiosRequestConfig
+  ): Promise<ApiResponse<T>> {
+    return this.request<T>('post', url, data, config)
+  }
+
+  public async put<T = any>(
+    url: string,
+    data?: any,
+    config?: AxiosRequestConfig
+  ): Promise<ApiResponse<T>> {
+    return this.request<T>('put', url, data, config)
+  }
+
+  public async patch<T = any>(
+    url: string,
+    data?: any,
+    config?: AxiosRequestConfig
+  ): Promise<ApiResponse<T>> {
+    return this.request<T>('patch', url, data, config)
+  }
+
+  public async delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+    return this.request<T>('delete', url, undefined, config)
+  }
+
+  private async request<T = any>(
+    method: 'get' | 'post' | 'put' | 'patch' | 'delete',
+    url: string,
+    data?: any,
+    config?: AxiosRequestConfig
+  ): Promise<ApiResponse<T>> {
+    try {
+      const response = await this.instance.request<T>({
+        method,
+        url,
+        data,
+        ...config,
+      })
+
+      return this.formatSuccessResponse<T>(response)
+    } catch (error) {
+      return this.formatErrorResponse<T>(error as AxiosError)
+    }
+  }
+
+  private formatSuccessResponse<T = any>(response: AxiosResponse): ApiResponse<T> {
+    // If the response data has a 'data' property, use that as the direct data
+    // Otherwise use the full response data
+    const responseData = response.data
+    const directData = responseData?.data !== undefined ? responseData.data : responseData
+
+    return {
+      success: true,
+      statusCode: response.status,
+      message: responseData?.message,
+      data: directData as T, // Now contains the direct data
+      response: responseData, // Optional: include full response if needed
+    }
+  }
+
+  private formatErrorResponse<T = any>(error: AxiosError): ApiResponse<T> {
+    if (error.response) {
+      const responseData = error.response.data as any
+      // Use error.response.data.data if exists, otherwise use error.response.data
+      const errorData = responseData?.data !== undefined ? responseData.data : responseData
+
+      return {
+        success: false,
+        statusCode: error.response.status,
+        message: responseData?.message || error.message,
+        data: errorData,
+        error: responseData?.error || responseData,
+        response: responseData,
+      }
+    } else if (error.request) {
+      return {
+        success: false,
+        statusCode: 503,
+        message: 'No response received from server',
+        error: error.request,
+      }
+    } else {
+      return {
+        success: false,
+        statusCode: 500,
+        message: error.message,
+        error: error,
+      }
+    }
+  }
+}
+
+const apiClient = ApiClient.getInstance(baseURL)
+
+export { ApiClient, apiClient }
