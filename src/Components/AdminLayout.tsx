@@ -175,7 +175,7 @@ const AdminLayout = () => {
                     নতুন পণ্য যোগ করুন
                   </NavLink>
                   <NavLink
-                    to='/product-categories'
+                    to='/dashboard/categories'
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive

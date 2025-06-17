@@ -13,10 +13,10 @@ export interface Shop {
 
 export interface Category {
   categoryId: number
-  categoryName: string
-  categoryDescription?: string
+  name: string
+  description?: string
   categoryIcon?: string
-  isActive: boolean
+
   createdAt: Date
   updatedAt: Date
 }
@@ -54,7 +54,7 @@ class ShopApiService {
     searchTerm: string = ''
   ): Promise<ApiResponse<{ shops: Shop[]; totalPages: number }>> {
     return apiClient.get<{ shops: Shop[]; totalPages: number }>(
-      `shops/admin?page=${page}&limit=${limit}&search=${searchTerm}`
+      `shops/admin?page=${page}&limit=${limit}&shopName=${searchTerm}`
     )
   }
 
@@ -103,40 +103,62 @@ class ShopApiService {
     categoryIcon?: string
     isActive?: boolean
   }): Promise<ApiResponse<Category>> {
-    return apiClient.post<Category>('category', categoryData)
+    return apiClient.post<Category>('categories', {
+      name: categoryData.categoryName,
+      description: categoryData.categoryDescription,
+      categoryIcon: categoryData.categoryIcon,
+    })
   }
 
   // Get a specific category by ID
   async getCategory(categoryId: number): Promise<ApiResponse<Category>> {
-    return apiClient.get<Category>(`category/${categoryId}`)
+    return apiClient.get<Category>(`categories/${categoryId}`)
   }
 
   // Get all categories
-  async getAllCategories(): Promise<ApiResponse<Category[]>> {
-    return apiClient.get<Category[]>('category')
+  async getAllCategories({
+    page = 1,
+    limit = 10,
+    searchTerm = '',
+  }: {
+    page?: number
+    limit?: number
+    searchTerm?: string
+  }) {
+    return apiClient.get<{
+      categories: Category[]
+      totalPages: number
+      page: number
+      total: number
+    }>('categories', {
+      params: {
+        page,
+        limit,
+        name: searchTerm,
+      },
+    })
   }
 
   // Update a category
   async updateCategory(
     categoryId: number,
-    updateData: {
-      categoryName?: string
-      categoryDescription?: string
+    values: {
+      name?: string
+      description?: string
       categoryIcon?: string
-      isActive?: boolean
     }
   ): Promise<ApiResponse<Category>> {
-    return apiClient.patch<Category>(`category/${categoryId}`, updateData)
+    return apiClient.put<Category>(`categories/${categoryId}`, values)
   }
 
   // Delete a category
   async deleteCategory(categoryId: number): Promise<ApiResponse<void>> {
-    return apiClient.delete<void>(`category/${categoryId}`)
+    return apiClient.delete<void>(`categories/${categoryId}`)
   }
 
   // Get shops by category
   async getShopsByCategory(categoryId: number): Promise<ApiResponse<Shop[]>> {
-    return apiClient.get<Shop[]>(`category/${categoryId}/shops`)
+    return apiClient.get<Shop[]>(`categories/${categoryId}/shops`)
   }
 
   // ==========================================
