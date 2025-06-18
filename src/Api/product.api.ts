@@ -55,7 +55,7 @@ interface ProductFiltersAdmin {
   search?: string
   minPrice?: number
   maxPrice?: number
-  shopId: number
+  shopId?: number
   categoryId?: number
   published?: boolean
 }
