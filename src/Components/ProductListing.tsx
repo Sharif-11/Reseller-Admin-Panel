@@ -1,6 +1,7 @@
 import { useFormik } from 'formik'
 import { useEffect, useState } from 'react'
 import {
+  FiCheck,
   FiChevronDown,
   FiChevronRight,
   FiEdit,
@@ -13,8 +14,8 @@ import {
   FiTrash2,
   FiX,
 } from 'react-icons/fi'
-import { useNavigate } from 'react-router-dom'
 import * as Yup from 'yup'
+import { ftpService } from '../Api/ftp.api'
 import { productService } from '../Api/product.api'
 import { shopApiService } from '../Api/shop.api'
 
@@ -35,6 +36,17 @@ interface Product {
     imageUrl: string
   }[]
   shop: Shop
+}
+
+interface ProductImage {
+  imageId: number
+  productId: number
+  imageUrl: string
+  isPrimary: boolean
+  hidden: boolean
+  createdAt: Date
+  updatedAt: Date
+  featureVector: string | null
 }
 
 interface ProductUpdateData {
@@ -60,8 +72,14 @@ interface VariantGroup {
   values: string[]
 }
 
+interface ImageUpload {
+  file: File
+  preview: string
+  isPrimary: boolean
+  hidden: boolean
+}
+
 const ProductListing = () => {
-  const navigate = useNavigate()
   const [products, setProducts] = useState<Product[]>([])
   const [shops, setShops] = useState<Shop[]>([])
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
@@ -85,6 +103,12 @@ const ProductListing = () => {
   const [newVariantName, setNewVariantName] = useState('')
   const [newVariantValue, setNewVariantValue] = useState('')
   const [selectedVariantForValue, setSelectedVariantForValue] = useState('')
+  const [showImageModal, setShowImageModal] = useState(false)
+  const [productImages, setProductImages] = useState<ProductImage[]>([])
+  const [imageUploads, setImageUploads] = useState<ImageUpload[]>([])
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [isUploading, setIsUploading] = useState(false)
+  const [imageError, setImageError] = useState('')
 
   // Form validation schema
   const validationSchema = Yup.object().shape({
@@ -204,6 +228,23 @@ const ProductListing = () => {
     fetchVariants()
   }, [showFeatureModal, selectedProduct])
 
+  // Fetch images when image modal is opened
+  useEffect(() => {
+    const fetchImages = async () => {
+      if (showImageModal && selectedProduct) {
+        try {
+          const response = await productService.getImages(selectedProduct.productId)
+          if (response.success) {
+            setProductImages(response.data || [])
+          }
+        } catch (error) {
+          console.error('Failed to fetch images', error)
+        }
+      }
+    }
+    fetchImages()
+  }, [showImageModal, selectedProduct])
+
   const togglePublishStatus = async (productId: number, currentStatus: boolean) => {
     try {
       await productService.togglePublishStatus(productId, !currentStatus)
@@ -235,6 +276,11 @@ const ProductListing = () => {
   const openFeatureModal = (product: Product) => {
     setSelectedProduct(product)
     setShowFeatureModal(true)
+  }
+
+  const openImageModal = (product: Product) => {
+    setSelectedProduct(product)
+    setShowImageModal(true)
   }
 
   const handleFilterChange = (key: keyof FilterOptions, value: any) => {
@@ -296,6 +342,165 @@ const ProductListing = () => {
       }
     } catch (error) {
       console.error('Failed to save variants', error)
+    }
+  }
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files)
+
+      // Validate each file
+      const validFiles = files.filter(file => {
+        if (!file.type.match('image.*')) {
+          setImageError('শুধুমাত্র ইমেজ ফাইল আপলোড করা যাবে')
+          return false
+        }
+        if (file.size > 2 * 1024 * 1024) {
+          // 2MB limit
+          setImageError('ইমেজ সাইজ 2MB এর বেশি হতে পারবে না')
+          return false
+        }
+        return true
+      })
+
+      if (validFiles.length === 0) return
+
+      // Create previews for valid files
+      const newUploads = validFiles.map(file => ({
+        file,
+        preview: URL.createObjectURL(file),
+        isPrimary: false,
+        hidden: false,
+      }))
+      setImageUploads([...imageUploads, ...newUploads])
+    }
+  }
+
+  const uploadImages = async () => {
+    if (!selectedProduct || imageUploads.length === 0) return
+
+    setIsUploading(true)
+    setUploadProgress(0)
+    setImageError('')
+
+    try {
+      const uploadedImages = []
+
+      for (let i = 0; i < imageUploads.length; i++) {
+        const upload = imageUploads[i]
+
+        try {
+          // Upload to FTP
+          const { success, data, message } = await ftpService.uploadFile(upload.file)
+
+          if (success && data?.publicUrl) {
+            uploadedImages.push({
+              url: data.publicUrl,
+              isPrimary: upload.isPrimary,
+              hidden: upload.hidden,
+            })
+          } else {
+            throw new Error(message || 'ইমেজ আপলোড করতে ব্যর্থ হয়েছে')
+          }
+        } catch (error) {
+          console.error(`Failed to upload image ${i + 1}:`, error)
+          throw error
+        }
+
+        // Update progress
+        setUploadProgress(((i + 1) / imageUploads.length) * 100)
+      }
+
+      // Save to product
+      const response = await productService.addImages(selectedProduct.productId, uploadedImages)
+      if (response.success) {
+        // Refresh images
+        const imagesResponse = await productService.getImages(selectedProduct.productId)
+        if (imagesResponse.success) {
+          setProductImages(imagesResponse.data!)
+          setImageUploads([])
+        }
+      } else {
+        throw new Error('Failed to save images to product')
+      }
+    } catch (error) {
+      console.error('Failed to upload images', error)
+      setImageError(
+        error instanceof Error ? error.message : 'Failed to upload images. Please try again.'
+      )
+    } finally {
+      setIsUploading(false)
+      setUploadProgress(0)
+    }
+  }
+
+  const removeUploadedImage = (index: number) => {
+    const newUploads = [...imageUploads]
+    URL.revokeObjectURL(newUploads[index].preview)
+    newUploads.splice(index, 1)
+    setImageUploads(newUploads)
+  }
+
+  const toggleImagePrimary = (imageId: number) => {
+    setProductImages(prevImages =>
+      prevImages.map(img => ({
+        ...img,
+        isPrimary: img.imageId === imageId,
+      }))
+    )
+  }
+
+  const toggleUploadPrimary = (index: number) => {
+    setImageUploads(prevUploads =>
+      prevUploads.map((upload, i) => ({
+        ...upload,
+        isPrimary: i === index,
+      }))
+    )
+  }
+
+  const toggleImageVisibility = (imageId: number) => {
+    setProductImages(prevImages =>
+      prevImages.map(img => (img.imageId === imageId ? { ...img, hidden: !img.hidden } : img))
+    )
+  }
+
+  const toggleUploadVisibility = (index: number) => {
+    setImageUploads(prevUploads =>
+      prevUploads.map((upload, i) => (i === index ? { ...upload, hidden: !upload.hidden } : upload))
+    )
+  }
+
+  const deleteImage = async (imageId: number) => {
+    try {
+      await productService.deleteImage(imageId)
+      setProductImages(prevImages => prevImages.filter(img => img.imageId !== imageId))
+    } catch (error) {
+      console.error('Failed to delete image', error)
+    }
+  }
+
+  const saveImageChanges = async () => {
+    if (!selectedProduct) return
+
+    try {
+      // Update existing images
+      for (const image of productImages) {
+        await productService.updateImage(image.imageId, {
+          isPrimary: image.isPrimary,
+          hidden: image.hidden,
+        })
+      }
+
+      // If there are uploads, handle them
+      if (imageUploads.length > 0) {
+        await uploadImages()
+      }
+
+      setShowImageModal(false)
+    } catch (error) {
+      console.error('Failed to save image changes', error)
+      setImageError('Failed to save changes. Please try again.')
     }
   }
 
@@ -471,7 +676,7 @@ const ProductListing = () => {
                       <FiEdit />
                     </button>
                     <button
-                      onClick={() => navigate(`/products/${product.productId}/images`)}
+                      onClick={() => openImageModal(product)}
                       className='p-2 rounded-full bg-purple-100 text-purple-700 hover:opacity-80'
                     >
                       <FiImage />
@@ -828,6 +1033,190 @@ const ProductListing = () => {
                   className='px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50'
                 >
                   Save Features
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Management Modal */}
+      {showImageModal && selectedProduct && (
+        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50'>
+          <div className='bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto'>
+            <div className='flex justify-between items-center border-b p-4'>
+              <h2 className='text-xl font-semibold text-gray-800'>
+                Manage Images for {selectedProduct.name}
+              </h2>
+              <button
+                onClick={() => setShowImageModal(false)}
+                className='text-gray-500 hover:text-gray-700'
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+
+            <div className='p-4'>
+              {/* Upload New Images */}
+              <div className='mb-6 border-b pb-4'>
+                <h3 className='text-lg font-medium text-gray-800 mb-3'>Upload New Images</h3>
+                <div className='flex flex-col gap-4'>
+                  <div className='flex flex-col sm:flex-row gap-4'>
+                    <label className='flex-1 cursor-pointer'>
+                      <div className='border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center h-full'>
+                        <FiPlus className='text-gray-400 text-3xl mb-2' />
+                        <span className='text-gray-600'>Click to select images</span>
+                        <input
+                          type='file'
+                          className='hidden'
+                          multiple
+                          accept='image/*'
+                          onChange={handleImageUpload}
+                        />
+                      </div>
+                    </label>
+                  </div>
+
+                  {/* Upload Progress */}
+                  {isUploading && (
+                    <div className='w-full bg-gray-200 rounded-full h-2.5'>
+                      <div
+                        className='bg-indigo-600 h-2.5 rounded-full'
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                  )}
+
+                  {/* Uploaded Image Previews */}
+                  {imageUploads.length > 0 && (
+                    <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4'>
+                      {imageUploads.map((upload, index) => (
+                        <div
+                          key={index}
+                          className={`relative border rounded-lg overflow-hidden ${
+                            upload.hidden ? 'opacity-60' : ''
+                          } ${isUploading ? 'animate-pulse' : ''}`}
+                        >
+                          <img
+                            src={upload.preview}
+                            alt={`Upload ${index + 1}`}
+                            className='w-full h-32 object-cover'
+                          />
+                          {isUploading && (
+                            <div className='absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center'>
+                              <div className='animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white'></div>
+                            </div>
+                          )}
+                          <div className='absolute top-2 right-2 flex gap-1'>
+                            <button
+                              onClick={() => toggleUploadPrimary(index)}
+                              className={`p-1 rounded-full ${
+                                upload.isPrimary
+                                  ? 'bg-green-500 text-white'
+                                  : 'bg-white text-gray-700'
+                              } ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              disabled={isUploading}
+                            >
+                              {upload.isPrimary ? <FiCheck size={14} /> : null}
+                            </button>
+                            <button
+                              onClick={() => toggleUploadVisibility(index)}
+                              className={`p-1 rounded-full ${
+                                upload.hidden ? 'bg-gray-500 text-white' : 'bg-white text-gray-700'
+                              } ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              disabled={isUploading}
+                            >
+                              {upload.hidden ? <FiEyeOff size={14} /> : <FiEye size={14} />}
+                            </button>
+                            <button
+                              onClick={() => removeUploadedImage(index)}
+                              className={`p-1 rounded-full bg-red-500 text-white ${
+                                isUploading ? 'opacity-50 cursor-not-allowed' : ''
+                              }`}
+                              disabled={isUploading}
+                            >
+                              <FiTrash2 size={14} />
+                            </button>
+                          </div>
+                          {upload.isPrimary && (
+                            <div className='absolute bottom-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded'>
+                              Primary
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Existing Images */}
+              <div className='mb-6'>
+                <h3 className='text-lg font-medium text-gray-800 mb-3'>Existing Images</h3>
+                {productImages.length === 0 ? (
+                  <p className='text-gray-500'>No images added yet</p>
+                ) : (
+                  <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4'>
+                    {productImages.map(image => (
+                      <div
+                        key={image.imageId}
+                        className={`relative border rounded-lg overflow-hidden ${
+                          image.hidden ? 'opacity-60' : ''
+                        }`}
+                      >
+                        <img
+                          src={image.imageUrl}
+                          alt={`Product image ${image.imageId}`}
+                          className='w-full h-32 object-cover'
+                        />
+                        <div className='absolute top-2 right-2 flex gap-1'>
+                          <button
+                            onClick={() => toggleImagePrimary(image.imageId)}
+                            className={`p-1 rounded-full ${
+                              image.isPrimary ? 'bg-green-500 text-white' : 'bg-white text-gray-700'
+                            }`}
+                          >
+                            {image.isPrimary ? <FiCheck size={14} /> : null}
+                          </button>
+                          <button
+                            onClick={() => toggleImageVisibility(image.imageId)}
+                            className={`p-1 rounded-full ${
+                              image.hidden ? 'bg-gray-500 text-white' : 'bg-white text-gray-700'
+                            }`}
+                          >
+                            {image.hidden ? <FiEyeOff size={14} /> : <FiEye size={14} />}
+                          </button>
+                          <button
+                            onClick={() => deleteImage(image.imageId)}
+                            className='p-1 rounded-full bg-red-500 text-white'
+                          >
+                            <FiTrash2 size={14} />
+                          </button>
+                        </div>
+                        {image.isPrimary && (
+                          <div className='absolute bottom-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded'>
+                            Primary
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Error Message */}
+              {imageError && (
+                <div className='mb-4 p-3 bg-red-100 text-red-700 rounded-md'>{imageError}</div>
+              )}
+
+              {/* Save Button */}
+              <div className='flex justify-end border-t pt-4'>
+                <button
+                  onClick={saveImageChanges}
+                  disabled={isUploading}
+                  className='px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50'
+                >
+                  {isUploading ? 'Uploading...' : 'Save Changes'}
                 </button>
               </div>
             </div>
