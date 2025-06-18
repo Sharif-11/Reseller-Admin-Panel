@@ -1,4 +1,6 @@
 import {
+  ChevronDownIcon,
+  ChevronRightIcon,
   MagnifyingGlassIcon,
   PencilSquareIcon,
   PlusIcon,
@@ -6,15 +8,16 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline'
 import { useFormik } from 'formik'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as Yup from 'yup'
+import { ftpService } from '../Api/ftp.api'
 import { shopApiService, type Category } from '../Api/shop.api'
 
 const CategoryManagement = () => {
-  const setCategories = useState<Category[]>([])[1]
-  const [filteredCategories, setFilteredCategories] = useState<Category[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [expandedCategories, setExpandedCategories] = useState<number[]>([])
   const [currentPage, setCurrentPage] = useState(1)
-  const totalPages = useState(1)[0]
+  const [totalPages, setTotalPages] = useState(1)
   const [searchTerm, setSearchTerm] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -24,16 +27,22 @@ const CategoryManagement = () => {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [modalError, setModalError] = useState<string | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [previewImage, setPreviewImage] = useState<string | null>(null)
+  const [parentCategory, setParentCategory] = useState<number | null>(null)
 
   const itemsPerPage = 10
 
   // Validation Schema
   const categoryValidationSchema = Yup.object().shape({
     name: Yup.string()
-      .required('ক্যাটাগরির নাম আবশ্যক')
-      .min(3, 'ক্যাটাগরির নাম অবশ্যই ৩ অক্ষরের বেশি হতে হবে'),
+      .required('Category name is required')
+      .min(3, 'Category name must be at least 3 characters'),
     description: Yup.string(),
-    categoryIcon: Yup.string().url('বৈধ URL দিন'),
+    categoryIcon: Yup.string()
+      .required('Category icon is required')
+      .url('Please enter a valid URL'),
   })
 
   const formik = useFormik({
@@ -41,6 +50,7 @@ const CategoryManagement = () => {
       name: '',
       description: '',
       categoryIcon: '',
+      parentId: null as number | null,
     },
     validationSchema: categoryValidationSchema,
     onSubmit: async values => {
@@ -48,30 +58,94 @@ const CategoryManagement = () => {
       try {
         let response
         if (editingCategory) {
-          response = await shopApiService.updateCategory(editingCategory.categoryId, values)
-          setSuccess('ক্যাটাগরি সফলভাবে আপডেট হয়েছে')
+          const { success, message } = await shopApiService.updateCategory(
+            editingCategory.categoryId,
+            {
+              name: values.name,
+              description: values.description,
+              categoryIcon: values.categoryIcon,
+              parentId: values.parentId || undefined,
+            }
+          )
+          response = { success, message }
+          if (success) {
+            setSuccess('Category updated successfully')
+          } else {
+            setModalError(message || 'Update failed')
+          }
         } else {
-          response = await shopApiService.createCategory({
-            categoryName: values.name,
-            categoryDescription: values.description,
+          const { success, message } = await shopApiService.createCategory({
+            name: values.name,
+            description: values.description,
             categoryIcon: values.categoryIcon,
+            parentId: parentCategory || values.parentId || undefined,
           })
-          setSuccess('নতুন ক্যাটাগরি সফলভাবে তৈরি হয়েছে')
+          response = { success, message }
+          if (success) {
+            setSuccess('Category created successfully')
+          } else {
+            setModalError(message || 'Creation failed')
+          }
         }
 
         if (response.success) {
           fetchCategories()
           setIsModalOpen(false)
+          setParentCategory(null)
         } else {
-          setModalError(response.message || 'অপারেশন ব্যর্থ হয়েছে')
+          setModalError(response.message || 'Operation failed')
         }
       } catch (error) {
-        setModalError('অপারেশন ব্যর্থ হয়েছে')
+        setModalError('Operation failed')
       }
     },
   })
 
-  // Fetch categories
+  // Toggle category expansion
+  const toggleExpand = (categoryId: number) => {
+    setExpandedCategories(prev =>
+      prev.includes(categoryId) ? prev.filter(id => id !== categoryId) : [...prev, categoryId]
+    )
+  }
+
+  // Handle image upload
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0]
+
+      // Set preview image
+      const reader = new FileReader()
+      reader.onload = event => {
+        if (event.target?.result) {
+          setPreviewImage(event.target.result as string)
+        }
+      }
+      reader.readAsDataURL(file)
+
+      // Upload to FTP
+      setIsUploading(true)
+      try {
+        const { success, data, message } = await ftpService.uploadFile(file)
+        if (success) {
+          formik.setFieldValue('categoryIcon', data?.publicUrl)
+          setPreviewImage(data?.publicUrl || null)
+        } else {
+          setModalError(message || 'Image upload failed')
+        }
+      } catch (error) {
+        setModalError('Image upload failed')
+      } finally {
+        setIsUploading(false)
+      }
+    }
+  }
+
+  // Trigger file input click
+  const triggerFileInput = () => {
+    fileInputRef.current?.click()
+  }
+
+  // Fetch categories with hierarchy
   const fetchCategories = async () => {
     setIsLoading(true)
     setError(null)
@@ -80,17 +154,17 @@ const CategoryManagement = () => {
         page: currentPage,
         limit: itemsPerPage,
         searchTerm: searchTerm,
+        subCategories: true,
       })
 
       if (response.success) {
         setCategories(response.data?.categories || [])
-        setFilteredCategories(response.data?.categories || [])
-        // setTotalPages(response.data?.totalPages || 1)
+        setTotalPages(response.data?.totalPages || 1)
       } else {
-        setError(response.message || 'ক্যাটাগরি লোড করতে ব্যর্থ হয়েছে')
+        setError(response.message || 'Failed to load categories')
       }
     } catch (error) {
-      setError('ক্যাটাগরি লোড করতে ব্যর্থ হয়েছে')
+      setError('Failed to load categories')
     } finally {
       setIsLoading(false)
     }
@@ -107,21 +181,25 @@ const CategoryManagement = () => {
   }
 
   // Open create modal
-  const openCreateModal = () => {
+  const openCreateModal = (parentId: number | null = null) => {
     formik.resetForm()
     setEditingCategory(null)
     setModalError(null)
+    setPreviewImage(null)
+    setParentCategory(parentId)
     setIsModalOpen(true)
   }
 
   // Open edit modal
-  const openEditModal = (category: any) => {
+  const openEditModal = (category: Category) => {
     setEditingCategory(category)
     formik.setValues({
       name: category.name,
       description: category.description || '',
       categoryIcon: category.categoryIcon || '',
+      parentId: category.parentId || null,
     })
+    setPreviewImage(category.categoryIcon || null)
     setModalError(null)
     setIsModalOpen(true)
   }
@@ -135,26 +213,85 @@ const CategoryManagement = () => {
       const response = await shopApiService.deleteCategory(categoryToDelete)
 
       if (response.success) {
-        setSuccess('ক্যাটাগরি সফলভাবে ডিলিট করা হয়েছে')
+        setSuccess('Category deleted successfully')
         fetchCategories()
         setIsDeleteModalOpen(false)
         setCategoryToDelete(null)
       } else {
-        setModalError(response.message || 'ক্যাটাগরি ডিলিট করতে ব্যর্থ হয়েছে')
+        setModalError(response.message || 'Failed to delete category')
       }
     } catch (error) {
-      setModalError('ক্যাটাগরি ডিলিট করতে ব্যর্থ হয়েছে')
+      setModalError('Failed to delete category')
     }
   }
 
-  // Close success/error messages after 5 seconds
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setSuccess(null)
-      setError(null)
-    }, 5000)
-    return () => clearTimeout(timer)
-  }, [success, error])
+  // Render category tree recursively
+  const renderCategoryTree = (
+    categories: Category[],
+    parentId: number | null = null,
+    level = 0
+  ) => {
+    return categories
+      .filter(category => category.parentId === parentId)
+      .map(category => {
+        const hasChildren = categories.some(c => c.parentId === category.categoryId)
+        const isExpanded = expandedCategories.includes(category.categoryId)
+
+        return (
+          <div key={category.categoryId} className={`${level > 0 ? 'ml-6' : ''}`}>
+            <div className='flex items-center justify-between p-2 hover:bg-gray-50 rounded'>
+              <div className='flex items-center'>
+                {hasChildren && (
+                  <button
+                    onClick={() => toggleExpand(category.categoryId)}
+                    className='mr-2 text-gray-500 hover:text-gray-700'
+                  >
+                    {isExpanded ? (
+                      <ChevronDownIcon className='h-4 w-4' />
+                    ) : (
+                      <ChevronRightIcon className='h-4 w-4' />
+                    )}
+                  </button>
+                )}
+                {!hasChildren && <div className='w-6'></div>}
+                <span className='font-medium'>{category.name}</span>
+              </div>
+              <div className='flex items-center gap-2'>
+                <button
+                  onClick={() => openCreateModal(category.categoryId)}
+                  className='text-green-600 hover:text-green-800'
+                  title='Add Subcategory'
+                >
+                  <PlusIcon className='h-4 w-4' />
+                </button>
+                <button
+                  onClick={() => openEditModal(category)}
+                  className='text-blue-600 hover:text-blue-800'
+                  title='Edit'
+                >
+                  <PencilSquareIcon className='h-4 w-4' />
+                </button>
+                <button
+                  onClick={() => {
+                    setCategoryToDelete(category.categoryId)
+                    setIsDeleteModalOpen(true)
+                  }}
+                  className='text-red-600 hover:text-red-800'
+                  title='Delete'
+                >
+                  <TrashIcon className='h-4 w-4' />
+                </button>
+              </div>
+            </div>
+            {hasChildren && isExpanded && (
+              <div className='border-l-2 border-gray-200 ml-3'>
+                {renderCategoryTree(categories, category.categoryId, level + 1)}
+              </div>
+            )}
+          </div>
+        )
+      })
+  }
 
   return (
     <div className='space-y-6 relative'>
@@ -172,7 +309,7 @@ const CategoryManagement = () => {
 
       {/* Header and Search */}
       <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
-        <h1 className='text-2xl font-bold'>ক্যাটাগরি ব্যবস্থাপনা</h1>
+        <h1 className='text-2xl font-bold'>Category Management</h1>
         <div className='flex flex-col sm:flex-row gap-3'>
           <div className='relative'>
             <div className='absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none'>
@@ -180,127 +317,33 @@ const CategoryManagement = () => {
             </div>
             <input
               type='text'
-              placeholder='ক্যাটাগরি খুঁজুন...'
-              className='pl-10 border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
+              placeholder='Search categories...'
+              className='pl-10 border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-full'
               value={searchTerm}
               onChange={handleSearch}
             />
           </div>
           <button
-            onClick={openCreateModal}
+            onClick={() => openCreateModal()}
             className='flex items-center gap-1 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2'
           >
             <PlusIcon className='h-5 w-5' />
-            <span>নতুন ক্যাটাগরি</span>
+            <span className='whitespace-nowrap'>New Category</span>
           </button>
         </div>
       </div>
 
-      {/* Mobile View - Card List */}
-      <div className='md:hidden space-y-3'>
+      {/* Category Tree View */}
+      <div className='bg-white rounded-lg shadow overflow-hidden'>
         {isLoading ? (
           <div className='flex justify-center py-8'>
             <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600'></div>
           </div>
-        ) : filteredCategories.length === 0 ? (
-          <div className='p-4 bg-white rounded-lg shadow text-center'>
-            কোন ক্যাটাগরি পাওয়া যায়নি
-          </div>
+        ) : categories.length === 0 ? (
+          <div className='p-4 text-center'>No categories found</div>
         ) : (
-          filteredCategories.map(category => (
-            <div key={category.categoryId} className='p-4 bg-white rounded-lg shadow'>
-              <div className='flex justify-between items-start'>
-                <div>
-                  <h3 className='font-medium'>{category.name}</h3>
-                  {category.description && (
-                    <p className='text-sm text-gray-600 mt-1'>{category.description}</p>
-                  )}
-                </div>
-                <div className='flex items-center gap-2'>
-                  <button
-                    onClick={() => openEditModal(category)}
-                    className='text-indigo-600 hover:text-indigo-900 mr-2'
-                  >
-                    <PencilSquareIcon className='h-5 w-5' />
-                  </button>
-                  <button
-                    onClick={() => {
-                      setCategoryToDelete(category.categoryId)
-                      setIsDeleteModalOpen(true)
-                    }}
-                    className='text-red-600 hover:text-red-900'
-                  >
-                    <TrashIcon className='h-5 w-5' />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))
+          <div className='divide-y divide-gray-200'>{renderCategoryTree(categories)}</div>
         )}
-      </div>
-
-      {/* Desktop View - Table */}
-      <div className='hidden md:block overflow-x-auto'>
-        <div className='bg-white rounded-lg shadow'>
-          <div className='overflow-hidden'>
-            {isLoading ? (
-              <div className='flex justify-center py-8'>
-                <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600'></div>
-              </div>
-            ) : filteredCategories.length === 0 ? (
-              <div className='p-4 text-center'>কোন ক্যাটাগরি পাওয়া যায়নি</div>
-            ) : (
-              <table className='min-w-full divide-y divide-gray-200'>
-                <thead className='bg-gray-50'>
-                  <tr>
-                    <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                      নাম
-                    </th>
-                    <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                      বিবরণ
-                    </th>
-                    <th className='px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                      কর্ম
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className='bg-white divide-y divide-gray-200'>
-                  {filteredCategories.map(category => (
-                    <tr key={category.categoryId}>
-                      <td className='px-6 py-4 whitespace-nowrap'>
-                        <div className='flex items-center'>
-                          <div className='text-sm font-medium text-gray-900'>{category.name}</div>
-                        </div>
-                      </td>
-                      <td className='px-6 py-4'>
-                        <div className='text-sm text-gray-900'>
-                          {category.description || 'কোন বিবরণ নেই'}
-                        </div>
-                      </td>
-                      <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium'>
-                        <button
-                          onClick={() => openEditModal(category)}
-                          className='text-indigo-600 hover:text-indigo-900 mr-3'
-                        >
-                          সম্পাদনা
-                        </button>
-                        <button
-                          onClick={() => {
-                            setCategoryToDelete(category.categoryId)
-                            setIsDeleteModalOpen(true)
-                          }}
-                          className='text-red-600 hover:text-red-900'
-                        >
-                          ডিলিট
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Pagination */}
@@ -312,17 +355,17 @@ const CategoryManagement = () => {
               disabled={currentPage === 1}
               className='px-3 py-1 border border-gray-300 rounded-md disabled:opacity-50'
             >
-              পূর্ববর্তী
+              Previous
             </button>
             <span className='px-3 py-1'>
-              পৃষ্ঠা {currentPage} এর {totalPages}
+              Page {currentPage} of {totalPages}
             </span>
             <button
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
               className='px-3 py-1 border border-gray-300 rounded-md disabled:opacity-50'
             >
-              পরবর্তী
+              Next
             </button>
           </div>
         </div>
@@ -344,7 +387,11 @@ const CategoryManagement = () => {
               <div className='bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4'>
                 <div className='flex justify-between items-start'>
                   <h3 className='text-lg leading-6 font-medium text-gray-900'>
-                    {editingCategory ? 'ক্যাটাগরি সম্পাদনা' : 'নতুন ক্যাটাগরি তৈরি'}
+                    {editingCategory
+                      ? 'Edit Category'
+                      : parentCategory
+                      ? 'Add Subcategory'
+                      : 'New Category'}
                   </h3>
                   <button
                     onClick={() => setIsModalOpen(false)}
@@ -362,9 +409,93 @@ const CategoryManagement = () => {
                 )}
 
                 <form onSubmit={formik.handleSubmit} className='mt-4 space-y-4'>
+                  {/* Parent Category Info */}
+                  {parentCategory && !editingCategory && (
+                    <div className='bg-gray-50 p-3 rounded-md'>
+                      <p className='text-sm text-gray-600'>
+                        Creating subcategory under:{' '}
+                        <strong>
+                          {categories.find(c => c.categoryId === parentCategory)?.name}
+                        </strong>
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Parent Category Selector (only when editing) */}
+                  {editingCategory && (
+                    <div>
+                      <label htmlFor='parentId' className='block text-sm font-medium text-gray-700'>
+                        Parent Category
+                      </label>
+                      <select
+                        id='parentId'
+                        name='parentId'
+                        className='mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500'
+                        value={formik.values.parentId || ''}
+                        onChange={formik.handleChange}
+                        onBlur={formik.handleBlur}
+                      >
+                        <option value=''>-- Top Level --</option>
+                        {categories
+                          .filter(c => c.categoryId !== editingCategory.categoryId)
+                          .map(category => (
+                            <option key={category.categoryId} value={category.categoryId}>
+                              {category.name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Image Upload */}
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>
+                      Category Icon *
+                    </label>
+                    <input
+                      type='file'
+                      ref={fileInputRef}
+                      onChange={handleImageUpload}
+                      accept='image/*'
+                      className='hidden'
+                    />
+                    <div className='flex flex-col items-center'>
+                      {previewImage ? (
+                        <>
+                          <img
+                            src={previewImage}
+                            alt='Preview'
+                            className='w-32 h-32 rounded-full object-cover mb-2'
+                          />
+                          <button
+                            type='button'
+                            onClick={triggerFileInput}
+                            className='text-sm text-indigo-600 hover:text-indigo-500'
+                          >
+                            Change Image
+                          </button>
+                        </>
+                      ) : (
+                        <div
+                          onClick={triggerFileInput}
+                          className='flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-indigo-500'
+                        >
+                          <PlusIcon className='h-10 w-10 text-gray-400' />
+                          <p className='mt-2 text-sm text-gray-600'>Click to upload image</p>
+                        </div>
+                      )}
+                      {isUploading && (
+                        <p className='mt-2 text-sm text-gray-500'>Uploading image...</p>
+                      )}
+                      {formik.touched.categoryIcon && formik.errors.categoryIcon ? (
+                        <p className='mt-1 text-sm text-red-600'>{formik.errors.categoryIcon}</p>
+                      ) : null}
+                    </div>
+                  </div>
+
                   <div>
                     <label htmlFor='name' className='block text-sm font-medium text-gray-700'>
-                      নাম *
+                      Name *
                     </label>
                     <input
                       id='name'
@@ -385,7 +516,7 @@ const CategoryManagement = () => {
                       htmlFor='description'
                       className='block text-sm font-medium text-gray-700'
                     >
-                      বিবরণ
+                      Description
                     </label>
                     <textarea
                       id='description'
@@ -398,41 +529,26 @@ const CategoryManagement = () => {
                     />
                   </div>
 
-                  <div>
-                    <label
-                      htmlFor='categoryIcon'
-                      className='block text-sm font-medium text-gray-700'
-                    >
-                      আইকন URL
-                    </label>
-                    <input
-                      id='categoryIcon'
-                      name='categoryIcon'
-                      type='url'
-                      className='mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500'
-                      value={formik.values.categoryIcon}
-                      onChange={formik.handleChange}
-                      onBlur={formik.handleBlur}
-                      placeholder='https://example.com/icon.png'
-                    />
-                    {formik.touched.categoryIcon && formik.errors.categoryIcon ? (
-                      <p className='mt-1 text-sm text-red-600'>{formik.errors.categoryIcon}</p>
-                    ) : null}
-                  </div>
-
                   <div className='flex justify-end space-x-3 pt-4'>
                     <button
                       type='button'
                       onClick={() => setIsModalOpen(false)}
                       className='inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
                     >
-                      বাতিল
+                      Cancel
                     </button>
                     <button
                       type='submit'
-                      className='inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
+                      disabled={isUploading || !formik.values.categoryIcon}
+                      className='inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed'
                     >
-                      {editingCategory ? 'আপডেট ক্যাটাগরি' : 'ক্যাটাগরি তৈরি করুন'}
+                      {isUploading
+                        ? 'Saving...'
+                        : editingCategory
+                        ? 'Update Category'
+                        : parentCategory
+                        ? 'Create Subcategory'
+                        : 'Create Category'}
                     </button>
                   </div>
                 </form>
@@ -461,13 +577,10 @@ const CategoryManagement = () => {
                     <TrashIcon className='h-6 w-6 text-red-600' />
                   </div>
                   <div className='mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left'>
-                    <h3 className='text-lg leading-6 font-medium text-gray-900'>
-                      ক্যাটাগরি ডিলিট করুন
-                    </h3>
+                    <h3 className='text-lg leading-6 font-medium text-gray-900'>Delete Category</h3>
                     <div className='mt-2'>
                       <p className='text-sm text-gray-500'>
-                        আপনি কি নিশ্চিত যে আপনি এই ক্যাটাগরি ডিলিট করতে চান? এই কাজটি পূর্বাবস্থায়
-                        ফেরানো যাবে না।
+                        Are you sure you want to delete this category? This action cannot be undone.
                       </p>
                     </div>
                   </div>
@@ -486,14 +599,14 @@ const CategoryManagement = () => {
                   onClick={handleDelete}
                   className='w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm'
                 >
-                  ডিলিট করুন
+                  Delete
                 </button>
                 <button
                   type='button'
                   onClick={() => setIsDeleteModalOpen(false)}
                   className='mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm'
                 >
-                  বাতিল
+                  Cancel
                 </button>
               </div>
             </div>

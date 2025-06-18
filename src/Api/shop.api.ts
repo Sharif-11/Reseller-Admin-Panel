@@ -16,6 +16,8 @@ export interface Category {
   name: string
   description?: string
   categoryIcon?: string
+  parentId?: number
+  subCategories?: Category[]
 
   createdAt: Date
   updatedAt: Date
@@ -98,15 +100,18 @@ class ShopApiService {
 
   // Create a new category
   async createCategory(categoryData: {
-    categoryName: string
-    categoryDescription?: string
+    name: string
+    description?: string
     categoryIcon?: string
     isActive?: boolean
+    parentId?: number
   }): Promise<ApiResponse<Category>> {
     return apiClient.post<Category>('categories', {
-      name: categoryData.categoryName,
-      description: categoryData.categoryDescription,
+      name: categoryData.name,
+      description: categoryData.description,
       categoryIcon: categoryData.categoryIcon,
+      isActive: categoryData.isActive,
+      parentId: categoryData.parentId,
     })
   }
 
@@ -120,10 +125,12 @@ class ShopApiService {
     page = 1,
     limit = 10,
     searchTerm = '',
+    subCategories = false,
   }: {
     page?: number
     limit?: number
     searchTerm?: string
+    subCategories?: boolean
   }) {
     return apiClient.get<{
       categories: Category[]
@@ -135,6 +142,7 @@ class ShopApiService {
         page,
         limit,
         name: searchTerm,
+        subCategories,
       },
     })
   }
@@ -146,6 +154,7 @@ class ShopApiService {
       name?: string
       description?: string
       categoryIcon?: string
+      parentId?: number
     }
   ): Promise<ApiResponse<Category>> {
     return apiClient.put<Category>(`categories/${categoryId}`, values)

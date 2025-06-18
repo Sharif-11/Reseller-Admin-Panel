@@ -1,4 +1,10 @@
-import type { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
+import type {
+  AxiosError,
+  AxiosInstance,
+  AxiosProgressEvent,
+  AxiosRequestConfig,
+  AxiosResponse,
+} from 'axios'
 import axios from 'axios'
 import { baseURL } from '../Axios/baseUrl'
 
@@ -6,10 +12,12 @@ export type ApiResponse<T = any> = {
   success: boolean
   message?: string
   statusCode?: number
-  data?: T // This now contains the direct response data
+  data?: T
   error?: any
-  response?: any // Optional: Full response if needed
+  response?: any
 }
+
+export type UploadProgressHandler = (progressEvent: AxiosProgressEvent) => void
 
 class ApiClient {
   private instance: AxiosInstance
@@ -20,7 +28,7 @@ class ApiClient {
       baseURL,
       timeout: 10000,
       headers: {
-        'Content-Type': 'application/json',
+        Accept: 'application/json',
       },
       ...config,
     })
@@ -36,7 +44,6 @@ class ApiClient {
   }
 
   private setupInterceptors(): void {
-    // Request interceptor remains the same
     this.instance.interceptors.request.use(
       config => {
         const token = localStorage.getItem('token')
@@ -48,7 +55,6 @@ class ApiClient {
       error => Promise.reject(error)
     )
 
-    // Response interceptor
     this.instance.interceptors.response.use(
       response => response,
       (error: AxiosError) => {
@@ -61,7 +67,7 @@ class ApiClient {
     )
   }
 
-  // Public methods remain the same
+  // Standard HTTP methods
   public async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
     return this.request<T>('get', url, undefined, config)
   }
@@ -94,6 +100,47 @@ class ApiClient {
     return this.request<T>('delete', url, undefined, config)
   }
 
+  // File upload specific method
+  public async uploadFile<T = any>(
+    url: string,
+    formData: FormData,
+    onUploadProgress?: UploadProgressHandler | undefined,
+    config?: AxiosRequestConfig
+  ): Promise<ApiResponse<T>> {
+    const uploadConfig: AxiosRequestConfig = {
+      ...config,
+      headers: {
+        ...config?.headers,
+        'Content-Type': 'multipart/form-data',
+      },
+      onUploadProgress,
+    }
+
+    return this.request<T>('post', url, formData, uploadConfig)
+  }
+
+  // Alternative: Post method that automatically handles FormData
+  public async postWithFileSupport<T = any>(
+    url: string,
+    data?: any,
+    onUploadProgress?: UploadProgressHandler,
+    config?: AxiosRequestConfig
+  ): Promise<ApiResponse<T>> {
+    const finalConfig: AxiosRequestConfig = {
+      ...config,
+      headers: {
+        ...config?.headers,
+        'Content-Type': data instanceof FormData ? 'multipart/form-data' : 'application/json',
+      },
+    }
+
+    if (data instanceof FormData && onUploadProgress) {
+      finalConfig.onUploadProgress = onUploadProgress
+    }
+
+    return this.request<T>('post', url, data, finalConfig)
+  }
+
   private async request<T = any>(
     method: 'get' | 'post' | 'put' | 'patch' | 'delete',
     url: string,
@@ -115,8 +162,6 @@ class ApiClient {
   }
 
   private formatSuccessResponse<T = any>(response: AxiosResponse): ApiResponse<T> {
-    // If the response data has a 'data' property, use that as the direct data
-    // Otherwise use the full response data
     const responseData = response.data
     const directData = responseData?.data !== undefined ? responseData.data : responseData
 
@@ -124,15 +169,14 @@ class ApiClient {
       success: true,
       statusCode: response.status,
       message: responseData?.message,
-      data: directData as T, // Now contains the direct data
-      response: responseData, // Optional: include full response if needed
+      data: directData as T,
+      response: responseData,
     }
   }
 
   private formatErrorResponse<T = any>(error: AxiosError): ApiResponse<T> {
     if (error.response) {
       const responseData = error.response.data as any
-      // Use error.response.data.data if exists, otherwise use error.response.data
       const errorData = responseData?.data !== undefined ? responseData.data : responseData
 
       return {
