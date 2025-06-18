@@ -151,7 +151,7 @@ const AdminLayout = () => {
               {openAccordions.products && (
                 <div className='ml-6 mt-0.5 space-y-0.5'>
                   <NavLink
-                    to='/products'
+                    to='/dashboard/products'
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive
@@ -163,7 +163,7 @@ const AdminLayout = () => {
                     সকল পণ্য
                   </NavLink>
                   <NavLink
-                    to='/products/add'
+                    to='/dashboard/add-product'
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive
@@ -232,7 +232,7 @@ const AdminLayout = () => {
               {openAccordions.users && (
                 <div className='ml-6 mt-0.5 space-y-0.5'>
                   <NavLink
-                    to='/users'
+                    to='/dashboard/users'
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive

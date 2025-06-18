@@ -1,13 +1,15 @@
 import {
   MagnifyingGlassIcon,
   PencilSquareIcon,
+  PhotoIcon,
   PlusIcon,
   TrashIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline'
 import { useFormik } from 'formik'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as Yup from 'yup'
+import { ftpService } from '../Api/ftp.api'
 import { shopApiService } from '../Api/shop.api'
 
 const ShopManagement = () => {
@@ -24,13 +26,18 @@ const ShopManagement = () => {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [modalError, setModalError] = useState<string | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [previewImage, setPreviewImage] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const itemsPerPage = 10
 
   // Validation Schema
   const shopValidationSchema = Yup.object().shape({
-    shopName: Yup.string().required('শপের নাম আবশ্যক'),
-    shopLocation: Yup.string().required('শপের অবস্থান আবশ্যক'),
+    shopName: Yup.string()
+      .required('শপের নাম আবশ্যক')
+      .min(3, 'শপের নাম অবশ্যই ৩ অক্ষরের বেশি হতে হবে'),
+    shopLocation: Yup.string().required('শপের স্ট্যাটাসন আবশ্যক'),
     deliveryChargeInside: Yup.number()
       .required('ডেলিভারি চার্জ (ভিতরে) আবশ্যক')
       .min(0, 'ডেলিভারি চার্জ শূন্য বা তার বেশি হতে হবে'),
@@ -58,16 +65,34 @@ const ShopManagement = () => {
       try {
         let response
         if (editingShop) {
-          response = await shopApiService.updateShop(editingShop.shopId, values)
-          setSuccess(response.message || 'শপ সফলভাবে আপডেট হয়েছে')
+          const { success, message } = await shopApiService.updateShop(editingShop.shopId, {
+            ...values,
+            shopIcon: values.shopIcon || undefined,
+          })
+          response = { success, message }
+          if (success) {
+            setSuccess(response.message || 'শপ সফলভাবে আপডেট হয়েছে')
+          } else {
+            setModalError(response.message || 'শপ আপডেট করতে ব্যর্থ হয়েছে')
+          }
         } else {
-          response = await shopApiService.createShop(values)
-          setSuccess(response.message || 'নতুন শপ সফলভাবে তৈরি হয়েছে')
+          const { success, message } = await shopApiService.createShop({
+            ...values,
+            shopIcon: values.shopIcon || undefined,
+          })
+          response = { success, message }
+
+          if (success) {
+            setSuccess(response.message || 'শপ সফলভাবে তৈরি হয়েছে')
+          } else {
+            setModalError(response.message || 'শপ তৈরি করতে ব্যর্থ হয়েছে')
+          }
         }
 
         if (response.success) {
           fetchShops()
           setIsModalOpen(false)
+          setPreviewImage(null)
         } else {
           setModalError(response.message || 'অপারেশন ব্যর্থ হয়েছে')
         }
@@ -76,6 +101,61 @@ const ShopManagement = () => {
       }
     },
   })
+
+  // Handle image upload
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0]
+
+      // Validate file type and size
+      if (!file.type.match('image.*')) {
+        setModalError('শুধুমাত্র ইমেজ ফাইল আপলোড করা যাবে')
+        return
+      }
+
+      if (file.size > 2 * 1024 * 1024) {
+        // 2MB limit
+        setModalError('ইমেজ সাইজ 2MB এর বেশি হতে পারবে না')
+        return
+      }
+
+      // Set preview image
+      const reader = new FileReader()
+      reader.onload = event => {
+        if (event.target?.result) {
+          setPreviewImage(event.target.result as string)
+        }
+      }
+      reader.readAsDataURL(file)
+
+      // Upload to FTP
+      setIsUploading(true)
+      try {
+        const { success, data, message } = await ftpService.uploadFile(file)
+        if (success) {
+          formik.setFieldValue('shopIcon', data?.publicUrl)
+          setPreviewImage(data?.publicUrl || null)
+        } else {
+          setModalError(message || 'ইমেজ আপলোড করতে ব্যর্থ হয়েছে')
+        }
+      } catch (error) {
+        setModalError('ইমেজ আপলোড করতে ব্যর্থ হয়েছে')
+      } finally {
+        setIsUploading(false)
+      }
+    }
+  }
+
+  // Trigger file input click
+  const triggerFileInput = () => {
+    fileInputRef.current?.click()
+  }
+
+  // Remove image
+  const removeImage = () => {
+    setPreviewImage(null)
+    formik.setFieldValue('shopIcon', undefined)
+  }
 
   // Fetch shops
   const fetchShops = async () => {
@@ -117,6 +197,7 @@ const ShopManagement = () => {
     formik.resetForm()
     setEditingShop(null)
     setModalError(null)
+    setPreviewImage(null)
     setIsModalOpen(true)
   }
 
@@ -132,6 +213,7 @@ const ShopManagement = () => {
       shopIcon: shop.shopIcon || '',
       isActive: shop.isActive,
     })
+    setPreviewImage(shop.shopIcon || null)
     setModalError(null)
     setIsModalOpen(true)
   }
@@ -148,15 +230,15 @@ const ShopManagement = () => {
       )
 
       if (response.success) {
-        setSuccess(response.message || 'শপ সফলভাবে ক্লোজড হয়েছে')
+        setSuccess(response.message || 'শপ সফলভাবে আপডেট হয়েছে')
         fetchShops()
         setIsDeleteModalOpen(false)
         setShopToDelete(null)
       } else {
-        setModalError(response.message || 'শপ ক্লোজড করতে ব্যর্থ হয়েছে')
+        setModalError(response.message || 'শপ আপডেট করতে ব্যর্থ হয়েছে')
       }
     } catch (error) {
-      setModalError('শপ ক্লোজড করতে ব্যর্থ হয়েছে')
+      setModalError('শপ আপডেট করতে ব্যর্থ হয়েছে')
     }
   }
 
@@ -175,36 +257,48 @@ const ShopManagement = () => {
       {success && (
         <div className='bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative'>
           <span className='block sm:inline'>{success}</span>
+          <button
+            onClick={() => setSuccess(null)}
+            className='absolute top-0 right-0 px-3 py-1 text-green-700 hover:text-green-900'
+          >
+            <XMarkIcon className='h-5 w-5' />
+          </button>
         </div>
       )}
       {error && (
         <div className='bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative'>
           <span className='block sm:inline'>{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className='absolute top-0 right-0 px-3 py-1 text-red-700 hover:text-red-900'
+          >
+            <XMarkIcon className='h-5 w-5' />
+          </button>
         </div>
       )}
 
       {/* Header and Search */}
       <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
-        <h1 className='text-2xl font-bold'>শপ ব্যবস্থাপনা</h1>
+        <h1 className='text-2xl font-bold'>শপ ম্যানেজমেন্ট</h1>
         <div className='flex flex-col sm:flex-row gap-3'>
-          <div className='relative'>
+          <div className='relative flex-grow'>
             <div className='absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none'>
               <MagnifyingGlassIcon className='h-5 w-5 text-gray-400' />
             </div>
             <input
               type='text'
               placeholder='শপ খুঁজুন...'
-              className='pl-10 border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
+              className='pl-10 w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
               value={searchTerm}
               onChange={handleSearch}
             />
           </div>
           <button
             onClick={openCreateModal}
-            className='flex items-center gap-1 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2'
+            className='flex items-center justify-center gap-1 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 whitespace-nowrap'
           >
             <PlusIcon className='h-5 w-5' />
-            <span>অ্যাড শপ</span>
+            <span className='hidden sm:inline'>নতুন শপ</span>
           </button>
         </div>
       </div>
@@ -216,42 +310,58 @@ const ShopManagement = () => {
             <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600'></div>
           </div>
         ) : filteredShops.length === 0 ? (
-          <div className='p-4 bg-white rounded-lg shadow text-center'>কোন শপ পাওয়া যায়নি</div>
+          <div className='p-4 bg-white rounded-lg shadow text-center'>
+            {searchTerm ? 'কোন শপ পাওয়া যায়নি' : 'কোন শপ নেই, নতুন শপ তৈরি করুন'}
+          </div>
         ) : (
           filteredShops.map(shop => (
             <div key={shop.shopId} className='p-4 bg-white rounded-lg shadow'>
-              <div className='flex justify-between items-start'>
-                <div>
-                  <h3 className='font-medium'>{shop.shopName}</h3>
-                  <p className='text-sm text-gray-600'>{shop.shopLocation}</p>
-                  <div className='mt-2 flex items-center gap-2'>
+              <div className='flex gap-3'>
+                {shop.shopIcon && (
+                  <img
+                    src={shop.shopIcon}
+                    alt={shop.shopName}
+                    className='w-16 h-16 rounded-md object-cover'
+                  />
+                )}
+                <div className='flex-1'>
+                  <div className='flex justify-between items-start'>
+                    <div>
+                      <h3 className='font-medium'>{shop.shopName}</h3>
+                      <p className='text-sm text-gray-600'>{shop.shopLocation}</p>
+                    </div>
+                    <div className='flex items-center gap-2'>
+                      <label className='inline-flex items-center cursor-pointer'>
+                        <input
+                          type='checkbox'
+                          checked={shop.isActive}
+                          onChange={() => {
+                            setShopToDelete(shop.shopId)
+                            setIsDeleteModalOpen(true)
+                          }}
+                          className='sr-only peer'
+                        />
+                        <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                      </label>
+                    </div>
+                  </div>
+                  <div className='mt-2 flex flex-wrap gap-1'>
                     <span className='text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded'>
-                      ভিতরে: {shop.deliveryChargeInside.toString()} টাকা
+                      ভিতরে: {shop.deliveryChargeInside} টাকা
                     </span>
                     <span className='text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded'>
-                      বাইরে: {shop.deliveryChargeOutside.toString()} টাকা
+                      বাইরে: {shop.deliveryChargeOutside} টাকা
                     </span>
                   </div>
-                </div>
-                <div className='flex items-center gap-2'>
-                  <label className='inline-flex items-center cursor-pointer'>
-                    <input
-                      type='checkbox'
-                      checked={shop.isActive}
-                      onChange={() => {
-                        setShopToDelete(shop.shopId)
-                        setIsDeleteModalOpen(true)
-                      }}
-                      className='sr-only peer'
-                    />
-                    <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                  </label>
-                  <button
-                    onClick={() => openEditModal(shop)}
-                    className='text-indigo-600 hover:text-indigo-900'
-                  >
-                    <PencilSquareIcon className='h-5 w-5' />
-                  </button>
+                  <div className='mt-2 flex justify-end gap-2'>
+                    <button
+                      onClick={() => openEditModal(shop)}
+                      className='text-indigo-600 hover:text-indigo-900 p-1 rounded-full hover:bg-indigo-50'
+                      title='Edit'
+                    >
+                      <PencilSquareIcon className='h-5 w-5' />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -260,95 +370,131 @@ const ShopManagement = () => {
       </div>
 
       {/* Desktop View - Table */}
-      <div className='hidden md:block overflow-x-auto'>
-        <div className='bg-white rounded-lg shadow'>
-          <div className='overflow-hidden'>
+      <div className='hidden md:block overflow-x-auto rounded-lg shadow'>
+        <table className='min-w-full divide-y divide-gray-200'>
+          <thead className='bg-gray-50'>
+            <tr>
+              <th
+                scope='col'
+                className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'
+              >
+                শপ
+              </th>
+              <th
+                scope='col'
+                className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'
+              >
+                লোকেশন
+              </th>
+              <th
+                scope='col'
+                className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'
+              >
+                ডেলিভারি চার্জ
+              </th>
+              <th
+                scope='col'
+                className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'
+              >
+                স্ট্যাটাস
+              </th>
+              <th
+                scope='col'
+                className='px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider'
+              >
+                অ্যাকশন
+              </th>
+            </tr>
+          </thead>
+          <tbody className='bg-white divide-y divide-gray-200'>
             {isLoading ? (
-              <div className='flex justify-center py-8'>
-                <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600'></div>
-              </div>
+              <tr>
+                <td colSpan={5} className='px-6 py-4 text-center'>
+                  <div className='flex justify-center py-8'>
+                    <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600'></div>
+                  </div>
+                </td>
+              </tr>
             ) : filteredShops.length === 0 ? (
-              <div className='p-4 text-center'>কোন শপ পাওয়া যায়নি</div>
+              <tr>
+                <td colSpan={5} className='px-6 py-4 text-center text-gray-500'>
+                  {searchTerm ? 'কোন শপ পাওয়া যায়নি' : 'কোন শপ নেই, নতুন শপ তৈরি করুন'}
+                </td>
+              </tr>
             ) : (
-              <table className='min-w-full divide-y divide-gray-200'>
-                <thead className='bg-gray-50'>
-                  <tr>
-                    <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                      শপের নাম
-                    </th>
-                    <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                      অবস্থান
-                    </th>
-                    <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                      ডেলিভারি চার্জ (ভিতরে)
-                    </th>
-                    <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                      ডেলিভারি চার্জ (বাইরে)
-                    </th>
-                    <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                      অবস্থা
-                    </th>
-                    <th className='px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                      কর্ম
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className='bg-white divide-y divide-gray-200'>
-                  {filteredShops.map(shop => (
-                    <tr key={shop.shopId}>
-                      <td className='px-6 py-4 whitespace-nowrap'>
-                        <div className='flex items-center'>
-                          <div className='text-sm font-medium text-gray-900'>{shop.shopName}</div>
+              filteredShops.map(shop => (
+                <tr key={shop.shopId} className='hover:bg-gray-50'>
+                  <td className='px-6 py-4 whitespace-nowrap'>
+                    <div className='flex items-center'>
+                      {shop.shopIcon && (
+                        <div className='flex-shrink-0 h-10 w-10 mr-3'>
+                          <img
+                            className='h-10 w-10 rounded-md object-cover'
+                            src={shop.shopIcon}
+                            alt={shop.shopName}
+                          />
                         </div>
-                      </td>
-                      <td className='px-6 py-4 whitespace-nowrap'>
-                        <div className='text-sm text-gray-900'>{shop.shopLocation}</div>
-                      </td>
-                      <td className='px-6 py-4 whitespace-nowrap'>
-                        <div className='text-sm text-gray-900'>
-                          {shop.deliveryChargeInside.toString()} টাকা
-                        </div>
-                      </td>
-                      <td className='px-6 py-4 whitespace-nowrap'>
-                        <div className='text-sm text-gray-900'>
-                          {shop.deliveryChargeOutside.toString()} টাকা
-                        </div>
-                      </td>
-                      <td className='px-6 py-4 whitespace-nowrap'>
-                        <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            shop.isActive
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}
-                        >
-                          {shop.isActive ? 'চালু' : 'ক্লোজড'}
-                        </span>
-                      </td>
-                      <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium'>
-                        <button
-                          onClick={() => openEditModal(shop)}
-                          className='text-indigo-600 hover:text-indigo-900 mr-3'
-                        >
-                          সম্পাদনা
-                        </button>
-                        <button
-                          onClick={() => {
-                            setShopToDelete(shop.shopId)
-                            setIsDeleteModalOpen(true)
-                          }}
-                          className='text-red-600 hover:text-red-900'
-                        >
-                          {shop.isActive ? 'ক্লোজড করুন' : 'চালু করুন'}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      )}
+                      <div>
+                        <div className='text-sm font-medium text-gray-900'>{shop.shopName}</div>
+                        {shop.shopDescription && (
+                          <div className='text-sm text-gray-500 truncate max-w-xs'>
+                            {shop.shopDescription}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className='px-6 py-4 whitespace-nowrap'>
+                    <div className='text-sm text-gray-900'>{shop.shopLocation}</div>
+                  </td>
+                  <td className='px-6 py-4 whitespace-nowrap'>
+                    <div className='flex gap-2'>
+                      <span className='px-2 py-1 text-xs bg-indigo-100 text-indigo-800 rounded'>
+                        ভিতরে: {shop.deliveryChargeInside} টাকা
+                      </span>
+                      <span className='px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded'>
+                        বাইরে: {shop.deliveryChargeOutside} টাকা
+                      </span>
+                    </div>
+                  </td>
+                  <td className='px-6 py-4 whitespace-nowrap'>
+                    <span
+                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        shop.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}
+                    >
+                      {shop.isActive ? 'চালু' : 'বন্ধ'}
+                    </span>
+                  </td>
+                  <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium'>
+                    <div className='flex justify-end items-center gap-2'>
+                      <button
+                        onClick={() => {
+                          setShopToDelete(shop.shopId)
+                          setIsDeleteModalOpen(true)
+                        }}
+                        className={`px-3 py-1 rounded-md text-sm ${
+                          shop.isActive
+                            ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                            : 'bg-green-50 text-green-600 hover:bg-green-100'
+                        }`}
+                      >
+                        {shop.isActive ? 'বন্ধ করুন' : 'চালু করুন'}
+                      </button>
+                      <button
+                        onClick={() => openEditModal(shop)}
+                        className='px-3 py-1 rounded-md text-sm bg-blue-50 text-blue-600 hover:bg-blue-100'
+                      >
+                        শপ এডিট করুন
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
             )}
-          </div>
-        </div>
+          </tbody>
+        </table>
       </div>
 
       {/* Pagination */}
@@ -362,7 +508,7 @@ const ShopManagement = () => {
             >
               পূর্ববর্তী
             </button>
-            <span className='px-3 py-1'>
+            <span className='px-3 py-1 text-sm'>
               পৃষ্ঠা {currentPage} এর {totalPages}
             </span>
             <button
@@ -404,8 +550,14 @@ const ShopManagement = () => {
 
                 {/* Error message inside modal */}
                 {modalError && (
-                  <div className='mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded'>
-                    {modalError}
+                  <div className='mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative'>
+                    <span className='block sm:inline'>{modalError}</span>
+                    <button
+                      onClick={() => setModalError(null)}
+                      className='absolute top-0 right-0 px-3 py-1 text-red-700 hover:text-red-900'
+                    >
+                      <XMarkIcon className='h-5 w-5' />
+                    </button>
                   </div>
                 )}
 
@@ -434,7 +586,7 @@ const ShopManagement = () => {
                         htmlFor='shopLocation'
                         className='block text-sm font-medium text-gray-700'
                       >
-                        অবস্থান *
+                        শপের লোকেশন *
                       </label>
                       <input
                         id='shopLocation'
@@ -457,17 +609,22 @@ const ShopManagement = () => {
                       >
                         ডেলিভারি চার্জ (ভিতরে) *
                       </label>
-                      <input
-                        id='deliveryChargeInside'
-                        name='deliveryChargeInside'
-                        type='number'
-                        step='0.01'
-                        min='0'
-                        className='mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500'
-                        value={formik.values.deliveryChargeInside}
-                        onChange={formik.handleChange}
-                        onBlur={formik.handleBlur}
-                      />
+                      <div className='mt-1 relative rounded-md shadow-sm'>
+                        <input
+                          id='deliveryChargeInside'
+                          name='deliveryChargeInside'
+                          type='number'
+                          step='0.01'
+                          min='0'
+                          className='block w-full pr-12 border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500'
+                          value={formik.values.deliveryChargeInside}
+                          onChange={formik.handleChange}
+                          onBlur={formik.handleBlur}
+                        />
+                        <div className='absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none'>
+                          <span className='text-gray-500 sm:text-sm'>টাকা</span>
+                        </div>
+                      </div>
                       {formik.touched.deliveryChargeInside && formik.errors.deliveryChargeInside ? (
                         <p className='mt-1 text-sm text-red-600'>
                           {formik.errors.deliveryChargeInside}
@@ -482,22 +639,79 @@ const ShopManagement = () => {
                       >
                         ডেলিভারি চার্জ (বাইরে) *
                       </label>
-                      <input
-                        id='deliveryChargeOutside'
-                        name='deliveryChargeOutside'
-                        type='number'
-                        step='0.01'
-                        min='0'
-                        className='mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500'
-                        value={formik.values.deliveryChargeOutside}
-                        onChange={formik.handleChange}
-                        onBlur={formik.handleBlur}
-                      />
+                      <div className='mt-1 relative rounded-md shadow-sm'>
+                        <input
+                          id='deliveryChargeOutside'
+                          name='deliveryChargeOutside'
+                          type='number'
+                          step='0.01'
+                          min='0'
+                          className='block w-full pr-12 border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500'
+                          value={formik.values.deliveryChargeOutside}
+                          onChange={formik.handleChange}
+                          onBlur={formik.handleBlur}
+                        />
+                        <div className='absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none'>
+                          <span className='text-gray-500 sm:text-sm'>টাকা</span>
+                        </div>
+                      </div>
                       {formik.touched.deliveryChargeOutside &&
                       formik.errors.deliveryChargeOutside ? (
                         <p className='mt-1 text-sm text-red-600'>
                           {formik.errors.deliveryChargeOutside}
                         </p>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {/* Image Upload */}
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>শপ আইকন</label>
+                    <input
+                      type='file'
+                      ref={fileInputRef}
+                      onChange={handleImageUpload}
+                      accept='image/*'
+                      className='hidden'
+                    />
+                    <div className='flex flex-col items-center'>
+                      {previewImage ? (
+                        <div className='relative'>
+                          <img
+                            src={previewImage}
+                            alt='Preview'
+                            className='w-32 h-32 rounded-md object-cover mb-2'
+                          />
+                          <button
+                            type='button'
+                            onClick={removeImage}
+                            className='absolute top-0 right-0 bg-red-500 text-white rounded-full p-1 -mt-2 -mr-2 hover:bg-red-600'
+                          >
+                            <XMarkIcon className='h-4 w-4' />
+                          </button>
+                          <button
+                            type='button'
+                            onClick={triggerFileInput}
+                            className='text-sm text-indigo-600 hover:text-indigo-500 mt-1'
+                          >
+                            ইমেজ পরিবর্তন করুন
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          onClick={triggerFileInput}
+                          className='flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-indigo-500'
+                        >
+                          <PhotoIcon className='h-10 w-10 text-gray-400' />
+                          <p className='mt-2 text-sm text-gray-600'>ইমেজ আপলোড করতে ক্লিক করুন</p>
+                          <p className='text-xs text-gray-500'>সর্বোচ্চ সাইজ: 2MB</p>
+                        </div>
+                      )}
+                      {isUploading && (
+                        <p className='mt-2 text-sm text-gray-500'>ইমেজ আপলোড হচ্ছে...</p>
+                      )}
+                      {formik.touched.shopIcon && formik.errors.shopIcon ? (
+                        <p className='mt-1 text-sm text-red-600'>{formik.errors.shopIcon}</p>
                       ) : null}
                     </div>
                   </div>
@@ -518,25 +732,6 @@ const ShopManagement = () => {
                       onChange={formik.handleChange}
                       onBlur={formik.handleBlur}
                     />
-                  </div>
-
-                  <div>
-                    <label htmlFor='shopIcon' className='block text-sm font-medium text-gray-700'>
-                      আইকন URL
-                    </label>
-                    <input
-                      id='shopIcon'
-                      name='shopIcon'
-                      type='url'
-                      className='mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500'
-                      value={formik.values.shopIcon}
-                      onChange={formik.handleChange}
-                      onBlur={formik.handleBlur}
-                      placeholder='https://example.com/icon.png'
-                    />
-                    {formik.touched.shopIcon && formik.errors.shopIcon ? (
-                      <p className='mt-1 text-sm text-red-600'>{formik.errors.shopIcon}</p>
-                    ) : null}
                   </div>
 
                   {editingShop && (
@@ -565,9 +760,38 @@ const ShopManagement = () => {
                     </button>
                     <button
                       type='submit'
-                      className='inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
+                      disabled={isUploading}
+                      className='inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed'
                     >
-                      {editingShop ? 'আপডেট শপ' : 'শপ তৈরি করুন'}
+                      {isUploading ? (
+                        <>
+                          <svg
+                            className='animate-spin -ml-1 mr-2 h-4 w-4 text-white'
+                            xmlns='http://www.w3.org/2000/svg'
+                            fill='none'
+                            viewBox='0 0 24 24'
+                          >
+                            <circle
+                              className='opacity-25'
+                              cx='12'
+                              cy='12'
+                              r='10'
+                              stroke='currentColor'
+                              strokeWidth='4'
+                            ></circle>
+                            <path
+                              className='opacity-75'
+                              fill='currentColor'
+                              d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
+                            ></path>
+                          </svg>
+                          {editingShop ? 'আপডেট হচ্ছে...' : 'তৈরি হচ্ছে...'}
+                        </>
+                      ) : editingShop ? (
+                        'আপডেট শপ'
+                      ) : (
+                        'শপ তৈরি করুন'
+                      )}
                     </button>
                   </div>
                 </form>
@@ -597,12 +821,12 @@ const ShopManagement = () => {
                   </div>
                   <div className='mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left'>
                     <h3 className='text-lg leading-6 font-medium text-gray-900'>
-                      কর্ম নিশ্চিত করুন
+                      অ্যাকশন নিশ্চিত করুন
                     </h3>
                     <div className='mt-2'>
                       <p className='text-sm text-gray-500'>
                         আপনি কি নিশ্চিত যে আপনি এই শপটি{' '}
-                        {shops.find(s => s.shopId === shopToDelete)?.isActive ? 'ক্লোজড' : 'চালু'}{' '}
+                        {shops.find(s => s.shopId === shopToDelete)?.isActive ? 'বন্ধ' : 'চালু'}{' '}
                         করতে চান?
                       </p>
                     </div>
