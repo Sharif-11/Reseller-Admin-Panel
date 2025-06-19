@@ -252,7 +252,7 @@ const AdminLayout = () => {
                     সেলার ম্যানেজমেন্ট
                   </NavLink>
                   <NavLink
-                    to='/users/admin-management'
+                    to='/dashboard/admin-management'
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive

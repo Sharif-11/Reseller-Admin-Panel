@@ -18,6 +18,14 @@ export interface User {
   updatedAt: Date
   isVerified: boolean
   referralCode?: string
+  userRoles?: {
+    userRoleId: string
+    roleId: string
+    role: {
+      roleId: string
+      roleName: string
+    }
+  }[]
 }
 
 export interface Customer {
@@ -245,7 +253,7 @@ class UserManagementApiService {
   async getAllUsers(params: {
     page?: number
     limit?: number
-    role?: string
+    role?: string | string[]
     searchTerm?: string
   }): Promise<
     ApiResponse<{ users: User[]; totalCount: number; totalPages: number; currentPage: number }>

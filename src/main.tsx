@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import AddProduct from './Components/AddProduct'
 import AdminLayout from './Components/AdminLayout'
 import AdminLogin from './Components/AdminLogin'
+import AdminManagement from './Components/AdminManagement'
 import CategoryManagement from './Components/CategoryManagement'
 import ChangePassword from './Components/ChangePassword'
 import ForgotPassword from './Components/ForgotPassword'
@@ -30,6 +31,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path='/dashboard/change-password' element={<ChangePassword />} />
             <Route path='/dashboard/profile' element={<AdminProfile />} />
             <Route path='/dashboard/seller-management' element={<SellerManagement />} />
+            <Route path='/dashboard/admin-management' element={<AdminManagement />} />
             <Route path='/dashboard/shops' element={<ShopManagement />} />
             <Route path='/dashboard/add-product' element={<AddProduct />} />
             <Route path='/dashboard/products' element={<ProductListing />} />
