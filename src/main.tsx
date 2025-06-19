@@ -12,6 +12,7 @@ import ProductListing from './Components/ProductListing'
 import AdminProfile from './Components/Profile'
 import RoleManagement from './Components/RoleManagement'
 import SellerManagement from './Components/SellerManagement'
+import SellerWalletManagementPage from './Components/SellerWallet'
 import ShopManagement from './Components/ShopManagement'
 import SystemWalletPage from './Components/SystemWallet'
 import { UserProvider } from './Context/userContext'
@@ -36,6 +37,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path='/dashboard/admin-management' element={<AdminManagement />} />
             <Route path='/dashboard/role-permission' element={<RoleManagement />} />
             <Route path='/dashboard/system-wallet' element={<SystemWalletPage />} />
+            <Route path='/dashboard/seller-wallet' element={<SellerWalletManagementPage />} />
             <Route path='/dashboard/shops' element={<ShopManagement />} />
             <Route path='/dashboard/add-product' element={<AddProduct />} />
             <Route path='/dashboard/products' element={<ProductListing />} />

@@ -108,6 +108,25 @@ class WalletApiService {
       otp,
     })
   }
+  /**
+   * Get wallet by phone number
+   * @param walletPhoneNo Wallet phone number
+   * @returns Wallet details
+   */
+  /**
+   * Get wallet by name and phone number
+   * @param walletName Wallet name (Bkash/Nagad)
+   * @param walletPhoneNo Wallet phone number
+   * @returns Wallet details
+   */
+  /**
+   * Get all wallets for a seller by phone number
+   * @param phoneNo Seller's phone number
+   * @returns List of seller's wallets
+   */
+  async getSellerWalletsByPhone(phoneNo: string) {
+    return apiClient.get(`wallets/seller/${phoneNo}`)
+  }
 }
 
 // Export a singleton instance
