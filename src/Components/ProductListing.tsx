@@ -376,64 +376,6 @@ const ProductListing = () => {
     }
   }
 
-  const uploadImages = async () => {
-    if (!selectedProduct || imageUploads.length === 0) return
-
-    setIsUploading(true)
-    setUploadProgress(0)
-    setImageError('')
-
-    try {
-      const uploadedImages = []
-
-      for (let i = 0; i < imageUploads.length; i++) {
-        const upload = imageUploads[i]
-
-        try {
-          // Upload to FTP
-          const { success, data, message } = await ftpService.uploadFile(upload.file)
-
-          if (success && data?.publicUrl) {
-            uploadedImages.push({
-              url: data.publicUrl,
-              isPrimary: upload.isPrimary,
-              hidden: upload.hidden,
-            })
-          } else {
-            throw new Error(message || 'ইমেজ আপলোড করতে ব্যর্থ হয়েছে')
-          }
-        } catch (error) {
-          console.error(`Failed to upload image ${i + 1}:`, error)
-          throw error
-        }
-
-        // Update progress
-        setUploadProgress(((i + 1) / imageUploads.length) * 100)
-      }
-
-      // Save to product
-      const response = await productService.addImages(selectedProduct.productId, uploadedImages)
-      if (response.success) {
-        // Refresh images
-        const imagesResponse = await productService.getImages(selectedProduct.productId)
-        if (imagesResponse.success) {
-          setProductImages(imagesResponse.data!)
-          setImageUploads([])
-        }
-      } else {
-        throw new Error('Failed to save images to product')
-      }
-    } catch (error) {
-      console.error('Failed to upload images', error)
-      setImageError(
-        error instanceof Error ? error.message : 'Failed to upload images. Please try again.'
-      )
-    } finally {
-      setIsUploading(false)
-      setUploadProgress(0)
-    }
-  }
-
   const removeUploadedImage = (index: number) => {
     const newUploads = [...imageUploads]
     URL.revokeObjectURL(newUploads[index].preview)
@@ -484,25 +426,132 @@ const ProductListing = () => {
     if (!selectedProduct) return
 
     try {
+      setImageError('') // Clear any previous errors
+      setIsUploading(true) // Show loading state
+
       // Update existing images
-      for (const image of productImages) {
-        await productService.updateImage(image.imageId, {
+      const updatePromises = productImages.map(image =>
+        productService.updateImage(image.imageId, {
           isPrimary: image.isPrimary,
           hidden: image.hidden,
         })
+      )
+
+      // Wait for all updates to complete
+      const updateResults = await Promise.all(updatePromises)
+
+      // Check for any failed updates
+      const failedUpdates = updateResults.filter(result => !result.success)
+      if (failedUpdates.length > 0) {
+        const errorMessage = failedUpdates[0].message || 'Failed to update some images'
+        throw new Error(errorMessage)
       }
 
       // If there are uploads, handle them
       if (imageUploads.length > 0) {
-        await uploadImages()
+        const uploadResult = await uploadImages()
+        if (!uploadResult?.success) {
+          throw new Error(uploadResult?.message || 'Failed to upload new images')
+        }
       }
+      await fetchProducts() // Refresh product list
 
       setShowImageModal(false)
     } catch (error) {
       console.error('Failed to save image changes', error)
-      setImageError('Failed to save changes. Please try again.')
+
+      // Display the backend error message if available
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to save changes. Please try again.'
+
+      setImageError(errorMessage)
+    } finally {
+      setIsUploading(false)
     }
   }
+
+  // And modify the uploadImages function to return the response:
+  const uploadImages = async () => {
+    if (!selectedProduct || imageUploads.length === 0) return null
+
+    setIsUploading(true)
+    setUploadProgress(0)
+    setImageError('')
+
+    try {
+      const uploadedImages = []
+
+      for (let i = 0; i < imageUploads.length; i++) {
+        const upload = imageUploads[i]
+
+        try {
+          // Upload to FTP
+          const { success, data, message } = await ftpService.uploadFile(upload.file)
+
+          if (success && data?.publicUrl) {
+            uploadedImages.push({
+              url: data.publicUrl,
+              isPrimary: upload.isPrimary,
+              hidden: upload.hidden,
+            })
+          } else {
+            throw new Error(message || 'ইমেজ আপলোড করতে ব্যর্থ হয়েছে')
+          }
+        } catch (error) {
+          console.error(`Failed to upload image ${i + 1}:`, error)
+          throw error
+        }
+
+        // Update progress
+        setUploadProgress(((i + 1) / imageUploads.length) * 100)
+      }
+
+      // Save to product
+      const response = await productService.addImages(selectedProduct.productId, uploadedImages)
+      return response // Return the response for error handling
+    } catch (error) {
+      console.error('Failed to upload images', error)
+      throw error
+    } finally {
+      setIsUploading(false)
+      setUploadProgress(0)
+    }
+  }
+
+  // Extract the products fetching logic into a separate function
+  const fetchProducts = async () => {
+    setLoading(true)
+    try {
+      const response = await productService.getAllProductsForAdmin(
+        {
+          search: filters.search,
+          shopId: filters.shopId,
+          published: filters.published,
+        },
+        {
+          page: pagination.page,
+          limit: pagination.limit,
+        }
+      )
+      if (response.success) {
+        setProducts(response.data?.products || [])
+        setPagination(prev => ({
+          ...prev,
+          total: response.data.pagination.total || 0,
+          totalPages: response.data.pagination.totalPages || 1,
+        }))
+      }
+    } catch (error) {
+      console.error('Failed to fetch products', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Update the useEffect for fetching products to use the new function
+  useEffect(() => {
+    fetchProducts()
+  }, [filters, pagination.page])
 
   return (
     <div className='min-h-screen bg-gray-50 p-4 md:p-6'>
