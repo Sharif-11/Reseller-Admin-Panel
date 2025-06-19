@@ -9,6 +9,7 @@ import ChangePassword from './Components/ChangePassword'
 import ForgotPassword from './Components/ForgotPassword'
 import ProductListing from './Components/ProductListing'
 import AdminProfile from './Components/Profile'
+import SellerManagement from './Components/SellerManagement'
 import ShopManagement from './Components/ShopManagement'
 import { UserProvider } from './Context/userContext'
 import './index.css'
@@ -28,6 +29,7 @@ createRoot(document.getElementById('root')!).render(
 
             <Route path='/dashboard/change-password' element={<ChangePassword />} />
             <Route path='/dashboard/profile' element={<AdminProfile />} />
+            <Route path='/dashboard/seller-management' element={<SellerManagement />} />
             <Route path='/dashboard/shops' element={<ShopManagement />} />
             <Route path='/dashboard/add-product' element={<AddProduct />} />
             <Route path='/dashboard/products' element={<ProductListing />} />

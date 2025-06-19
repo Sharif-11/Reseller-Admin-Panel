@@ -9,13 +9,21 @@ const AdminLayout = () => {
     products: false,
     users: false,
     shops: false,
+    wallets: false,
+    payments: false,
   })
   const { user } = useContext(UserContext)
 
   type AccordionKey = keyof typeof openAccordions
 
   const toggleAccordion = (key: string) => {
-    if (key === 'products' || key === 'users' || key === 'shops') {
+    if (
+      key === 'products' ||
+      key === 'users' ||
+      key === 'shops' ||
+      key === 'wallets' ||
+      key === 'payments'
+    ) {
       setOpenAccordions(prev => ({
         ...prev,
         [key]: !prev[key as AccordionKey],
@@ -232,7 +240,7 @@ const AdminLayout = () => {
               {openAccordions.users && (
                 <div className='ml-6 mt-0.5 space-y-0.5'>
                   <NavLink
-                    to='/dashboard/users'
+                    to='/dashboard/seller-management'
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive
@@ -241,10 +249,10 @@ const AdminLayout = () => {
                       }`
                     }
                   >
-                    সকল ইউজার
+                    সেলার ম্যানেজমেন্ট
                   </NavLink>
                   <NavLink
-                    to='/users/admins'
+                    to='/users/admin-management'
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive
@@ -253,10 +261,11 @@ const AdminLayout = () => {
                       }`
                     }
                   >
-                    অ্যাডমিনরা
+                    অ্যাডমিন ম্যানেজমেন্ট
                   </NavLink>
+
                   <NavLink
-                    to='/users/customers'
+                    to='/dashboard/role-permission'
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive
@@ -265,7 +274,7 @@ const AdminLayout = () => {
                       }`
                     }
                   >
-                    ক্রেতারা
+                    রোল ও পারমিশন ম্যানেজমেন্ট
                   </NavLink>
                 </div>
               )}
@@ -323,6 +332,144 @@ const AdminLayout = () => {
                     }
                   >
                     শপ লিস্ট
+                  </NavLink>
+                </div>
+              )}
+            </div>
+
+            {/* Wallet Management */}
+            <div className='border-b border-indigo-600/30 pb-0.5'>
+              <button
+                onClick={() => toggleAccordion('wallets')}
+                className='w-full flex items-center justify-between px-3 py-2 text-indigo-100 hover:bg-indigo-600/30 rounded-lg transition-all text-sm'
+              >
+                <div className='flex items-center'>
+                  <svg
+                    className='w-4 h-4 mr-2'
+                    fill='none'
+                    stroke='currentColor'
+                    viewBox='0 0 24 24'
+                  >
+                    <path
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      strokeWidth={2}
+                      d='M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z'
+                    />
+                  </svg>
+                  ওয়ালেট ম্যানেজমেন্ট
+                </div>
+                <svg
+                  className={`w-3 h-3 transition-transform duration-200 ${
+                    openAccordions.wallets ? 'transform rotate-180' : ''
+                  }`}
+                  fill='none'
+                  stroke='currentColor'
+                  viewBox='0 0 24 24'
+                >
+                  <path
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    strokeWidth={2}
+                    d='M19 9l-7 7-7-7'
+                  />
+                </svg>
+              </button>
+
+              {openAccordions.wallets && (
+                <div className='ml-6 mt-0.5 space-y-0.5'>
+                  <NavLink
+                    to='/dashboard/system-wallet'
+                    className={({ isActive }) =>
+                      `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
+                        isActive
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-indigo-100 hover:bg-indigo-600/30'
+                      }`
+                    }
+                  >
+                    সিস্টেম ওয়ালেট
+                  </NavLink>
+                  <NavLink
+                    to='/dashboard/seller-wallet'
+                    className={({ isActive }) =>
+                      `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
+                        isActive
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-indigo-100 hover:bg-indigo-600/30'
+                      }`
+                    }
+                  >
+                    সেলার ওয়ালেট
+                  </NavLink>
+                </div>
+              )}
+            </div>
+
+            {/* Payment Management */}
+            <div className='border-b border-indigo-600/30 pb-0.5'>
+              <button
+                onClick={() => toggleAccordion('payments')}
+                className='w-full flex items-center justify-between px-3 py-2 text-indigo-100 hover:bg-indigo-600/30 rounded-lg transition-all text-sm'
+              >
+                <div className='flex items-center'>
+                  <svg
+                    className='w-4 h-4 mr-2'
+                    fill='none'
+                    stroke='currentColor'
+                    viewBox='0 0 24 24'
+                  >
+                    <path
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      strokeWidth={2}
+                      d='M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z'
+                    />
+                  </svg>
+                  পেমেন্ট ম্যানেজমেন্ট
+                </div>
+                <svg
+                  className={`w-3 h-3 transition-transform duration-200 ${
+                    openAccordions.payments ? 'transform rotate-180' : ''
+                  }`}
+                  fill='none'
+                  stroke='currentColor'
+                  viewBox='0 0 24 24'
+                >
+                  <path
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    strokeWidth={2}
+                    d='M19 9l-7 7-7-7'
+                  />
+                </svg>
+              </button>
+
+              {openAccordions.payments && (
+                <div className='ml-6 mt-0.5 space-y-0.5'>
+                  <NavLink
+                    to='/dashboard/payment-history'
+                    className={({ isActive }) =>
+                      `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
+                        isActive
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-indigo-100 hover:bg-indigo-600/30'
+                      }`
+                    }
+                  >
+                    পেমেন্ট হিস্টোরি
+                  </NavLink>
+                  <NavLink
+                    to='/dashboard/withdraw-requests'
+                    className={({ isActive }) =>
+                      `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
+                        isActive
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-indigo-100 hover:bg-indigo-600/30'
+                      }`
+                    }
+                  >
+                    উইথড্র রিকোয়েস্ট
                   </NavLink>
                 </div>
               )}
