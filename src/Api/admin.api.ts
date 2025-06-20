@@ -70,6 +70,12 @@ class AdminApiService {
   ): Promise<ApiResponse<{ userRoles: { roleId: string }[] }>> {
     return apiClient.put(`roles/user/${userId}`, { roleIds })
   }
+  async promoteAdminToSuperAdmin(userId: string): Promise<ApiResponse<AdminUser>> {
+    return apiClient.patch<AdminUser>(`auth/promote-admin`, { adminId: userId })
+  }
+  async demoteSuperAdminToAdmin(userId: string): Promise<ApiResponse<AdminUser>> {
+    return apiClient.patch<AdminUser>(`auth/demote-super-admin`, { superAdminId: userId })
+  }
 }
 
 // Export a singleton instance
