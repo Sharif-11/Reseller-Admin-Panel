@@ -179,7 +179,7 @@ const RoleManagement = () => {
       // Prepare permissions for API call
       const permissionsToUpdate = permissions.map(p => ({
         permission: p.permission,
-        actions: p.actions.includes('ALL') ? ['ALL'] : p.actions,
+        actions: p.actions,
       }))
 
       // API call

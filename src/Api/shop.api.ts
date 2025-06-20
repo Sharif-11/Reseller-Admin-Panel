@@ -79,7 +79,7 @@ class ShopApiService {
       deliveryChargeInside?: number
       deliveryChargeOutside?: number
       shopDescription?: string
-      shopIcon?: string
+      shopIcon: string | null
       isActive?: boolean
     }
   ): Promise<ApiResponse<Shop>> {

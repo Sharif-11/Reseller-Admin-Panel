@@ -67,7 +67,7 @@ const ShopManagement = () => {
         if (editingShop) {
           const { success, message } = await shopApiService.updateShop(editingShop.shopId, {
             ...values,
-            shopIcon: values.shopIcon || undefined,
+            shopIcon: values.shopIcon || null,
           })
           response = { success, message }
           if (success) {
