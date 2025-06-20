@@ -519,7 +519,7 @@ const RoleManagement = () => {
       </div>
 
       {/* Desktop View - Table */}
-      <div className='hidden sm:block overflow-hidden rounded-lg shadow'>
+      <div className='hidden sm:block overflow-scroll rounded-lg shadow'>
         <table className='min-w-full divide-y divide-gray-200'>
           <thead className='bg-gray-50'>
             <tr>

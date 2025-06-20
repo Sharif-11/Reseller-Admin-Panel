@@ -54,17 +54,6 @@ class ApiClient {
       },
       error => Promise.reject(error)
     )
-
-    this.instance.interceptors.response.use(
-      response => response,
-      (error: AxiosError) => {
-        if (error.response?.status === 401) {
-          console.error('Unauthorized access - redirect to login')
-          // Optional: Add redirect logic here
-        }
-        return Promise.reject(error)
-      }
-    )
   }
 
   // Standard HTTP methods

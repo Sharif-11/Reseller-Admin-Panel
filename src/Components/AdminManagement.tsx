@@ -29,7 +29,7 @@ import { userManagementApiService } from '../Api/user.api'
 // Bengali translations
 const bengaliTranslations = {
   promoteConfirm: 'আপনি কি এই অ্যাডমিনকে সুপার অ্যাডমিন করতে চান?',
-  demoteConfirm: 'আপনি কি এই সুপার অ্যাডমিনকে অ্যাডমিন ',
+  demoteConfirm: 'আপনি কি এই সুপার অ্যাডমিনকে অ্যাডমিন করতে চান?',
   roleAddConfirm: 'আপনি কি {{role}} রোলটি যোগ করতে চান?',
   roleRemoveConfirm: 'আপনি কি {{role}} রোলটি সরাতে চান?',
   confirm: 'নিশ্চিত করুন',

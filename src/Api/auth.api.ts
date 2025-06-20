@@ -42,6 +42,27 @@ class AuthService {
   async updateProfile(data: { name: string; email: string }): Promise<ApiResponse<User>> {
     return apiClient.patch<User>('auth/profile', data)
   }
+  async checkSuperAdminExists() {
+    return apiClient.get('auth/check-super-admin')
+  }
+  async createFirstSuperAdmin({
+    phoneNo,
+    name,
+    password,
+    email,
+  }: {
+    phoneNo: string
+    name: string
+    password: string
+    email?: string
+  }) {
+    return apiClient.post('auth/first-super-admin', {
+      phoneNo,
+      name,
+      password,
+      email,
+    })
+  }
   // profile fetch
 }
 
