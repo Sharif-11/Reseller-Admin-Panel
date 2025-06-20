@@ -1,10 +1,10 @@
 import { ErrorMessage, Field, Formik } from 'formik'
 import { Eye, EyeOff, Loader2, Lock, LogIn, Phone } from 'lucide-react'
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import * as Yup from 'yup'
 import { authService } from '../Api/auth.api'
-import logo from '../assets/shopbd_logo.png' // Adjust the path as necessary
+import logo from '../assets/shopbd_logo.png'
 import { useAuth } from '../Hooks/useAuth'
 
 // Validation Schema
@@ -21,9 +21,11 @@ const AdminLogin = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [loginError, setLoginError] = useState('')
-  const { setUser, user } = useAuth()
+  const location = useLocation()
+  const { user, setUser, loading: authLoading } = useAuth()
   const navigate = useNavigate()
 
+  // Handle form submission
   const handleSubmit = async (values: { phone: string; password: string }) => {
     setIsLoading(true)
     setLoginError('')
@@ -33,27 +35,54 @@ const AdminLogin = () => {
         phoneNo: values.phone,
         password: values.password,
       })
-      console.log('Login response', data.user)
-      if (success) {
+
+      if (success && data?.token && data?.user) {
+        // Store token and update user state
+        localStorage.setItem('token', data.token)
         setUser(data.user)
 
-        localStorage.setItem('token', data?.token || '')
-        navigate('/dashboard')
+        // Redirect to dashboard
+        navigate('/dashboard', { replace: true })
       } else {
         setLoginError(message || 'লগইন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।')
       }
-    } catch (error) {
-      setLoginError('লগইন করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।')
+    } catch (error: any) {
+      console.error('Login error:', error)
+      setLoginError(error.response?.data?.message || 'লগইন করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।')
     } finally {
       setIsLoading(false)
     }
   }
 
-  if (user) {
-    // If user is already logged in, redirect to dashboard
-    navigate('/dashboard')
-  }
+  // Redirect if already logged in
+  useEffect(() => {
+    const f = async () => {
+      try {
+        const { data, success } = await authService.verifyLogin()
+        console.log('Verifying login:', { data, success })
+        if (success) {
+          setUser(data)
 
+          // Get the previous location from navigation state or default to '/dashboard'
+          const from = location.state?.from?.pathname || '/dashboard'
+          navigate(from, { replace: true })
+        }
+      } catch (error) {
+        console.error('Error reloading user:', error)
+      }
+    }
+    f()
+  }, [user, authLoading, navigate])
+
+  // Show loading state while checking auth status
+  if (authLoading) {
+    return (
+      <div className='min-h-screen flex items-center justify-center'>
+        <Loader2 className='animate-spin h-12 w-12 text-indigo-600' />
+      </div>
+    )
+  }
+  console.log({ user })
   return (
     <div className='min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4 py-8'>
       <div className='w-full max-w-md'>
@@ -154,6 +183,7 @@ const AdminLogin = () => {
                     type='button'
                     onClick={() => navigate('/forgot-password')}
                     className='text-sm text-indigo-600 hover:text-indigo-800 hover:underline focus:outline-none'
+                    disabled={isLoading}
                   >
                     পাসওয়ার্ড ভুলে গেছেন?
                   </button>

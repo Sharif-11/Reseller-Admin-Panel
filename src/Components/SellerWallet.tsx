@@ -35,7 +35,7 @@ const SellerWalletManagementPage = () => {
         setWallets(response.data)
       } else {
         setWallets([])
-        setError('No wallets found for this seller')
+        setError(response.message || 'No wallets found for this seller')
       }
     } catch (err) {
       console.error('Failed to fetch wallets:', err)

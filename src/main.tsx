@@ -10,6 +10,7 @@ import ChangePassword from './Components/ChangePassword'
 import ForgotPassword from './Components/ForgotPassword'
 import ProductListing from './Components/ProductListing'
 import AdminProfile from './Components/Profile'
+import { AuthRoute, ProtectedRoute } from './Components/ProtectedRoute'
 import RoleManagement from './Components/RoleManagement'
 import SellerManagement from './Components/SellerManagement'
 import SellerWalletManagementPage from './Components/SellerWallet'
@@ -23,30 +24,32 @@ createRoot(document.getElementById('root')!).render(
     <UserProvider>
       <BrowserRouter>
         <Routes>
-          {/* Public Admin Routes */}
-          <Route path='/login' element={<AdminLogin />} />
-          <Route path='/forgot-password' element={<ForgotPassword />} />
+          {/* Public routes - only accessible when not logged in */}
+          <Route element={<AuthRoute />}>
+            <Route path='/' element={<AdminLogin />} />
+            <Route path='/forgot-password' element={<ForgotPassword />} />
+          </Route>
 
-          {/* Protected Admin Routes */}
-          <Route path='/dashboard' element={<AdminLayout />}>
-            <Route index element={<h1>Dashboard</h1>} />
-
-            <Route path='/dashboard/change-password' element={<ChangePassword />} />
-            <Route path='/dashboard/profile' element={<AdminProfile />} />
-            <Route path='/dashboard/seller-management' element={<SellerManagement />} />
-            <Route path='/dashboard/admin-management' element={<AdminManagement />} />
-            <Route path='/dashboard/role-permission' element={<RoleManagement />} />
-            <Route path='/dashboard/system-wallet' element={<SystemWalletPage />} />
-            <Route path='/dashboard/seller-wallet' element={<SellerWalletManagementPage />} />
-            <Route path='/dashboard/shops' element={<ShopManagement />} />
-            <Route path='/dashboard/add-product' element={<AddProduct />} />
-            <Route path='/dashboard/products' element={<ProductListing />} />
-            <Route path='/dashboard/categories' element={<CategoryManagement />} />
-            {/* Add other protected routes here */}
+          {/* Protected routes - only accessible when logged in */}
+          <Route element={<ProtectedRoute />}>
+            <Route path='/dashboard' element={<AdminLayout />}>
+              <Route index element={<h1>Dashboard</h1>} />
+              <Route path='change-password' element={<ChangePassword />} />
+              <Route path='profile' element={<AdminProfile />} />
+              <Route path='seller-management' element={<SellerManagement />} />
+              <Route path='admin-management' element={<AdminManagement />} />
+              <Route path='role-permission' element={<RoleManagement />} />
+              <Route path='system-wallet' element={<SystemWalletPage />} />
+              <Route path='seller-wallet' element={<SellerWalletManagementPage />} />
+              <Route path='shops' element={<ShopManagement />} />
+              <Route path='add-product' element={<AddProduct />} />
+              <Route path='products' element={<ProductListing />} />
+              <Route path='categories' element={<CategoryManagement />} />
+            </Route>
           </Route>
 
           {/* Catch-all route */}
-          <Route path='*' element={<Navigate to='/login' replace />} />
+          <Route path='*' element={<Navigate to='/' replace />} />
         </Routes>
       </BrowserRouter>
     </UserProvider>

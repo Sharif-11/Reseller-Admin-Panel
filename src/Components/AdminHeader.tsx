@@ -30,7 +30,7 @@ const AdminHeader = ({
     if (success) {
       localStorage.removeItem('token')
       if (setUser) setUser(null)
-      navigate('/admin/login')
+      navigate('/')
     }
     setLoading(false)
   }
