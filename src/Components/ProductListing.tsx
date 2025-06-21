@@ -1,7 +1,6 @@
 import { useFormik } from 'formik'
 import { useEffect, useState } from 'react'
 import {
-  FiCheck,
   FiChevronDown,
   FiChevronRight,
   FiEdit,
@@ -18,6 +17,7 @@ import * as Yup from 'yup'
 import { ftpService } from '../Api/ftp.api'
 import { productService } from '../Api/product.api'
 import { shopApiService } from '../Api/shop.api'
+import './ProductSlider.css'
 
 interface Shop {
   shopId: number
@@ -42,7 +42,6 @@ interface ProductImage {
   imageId: number
   productId: number
   imageUrl: string
-  isPrimary: boolean
   hidden: boolean
   createdAt: Date
   updatedAt: Date
@@ -75,7 +74,6 @@ interface VariantGroup {
 interface ImageUpload {
   file: File
   preview: string
-  isPrimary: boolean
   hidden: boolean
 }
 
@@ -109,6 +107,7 @@ const ProductListing = () => {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isUploading, setIsUploading] = useState(false)
   const [imageError, setImageError] = useState('')
+  const [deletingImages, setDeletingImages] = useState<number[]>([]) // Track image IDs being deleted
 
   // Form validation schema
   const validationSchema = Yup.object().shape({
@@ -151,6 +150,8 @@ const ProductListing = () => {
               p.productId === selectedProduct.productId ? { ...p, ...updateData } : p
             )
           )
+          formik.resetForm()
+          setSelectedProduct(null)
           setIsEditModalOpen(false)
         }
       } catch (error) {
@@ -174,36 +175,38 @@ const ProductListing = () => {
     fetchShops()
   }, [])
 
-  // Fetch products with filters and pagination
-  useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true)
-      try {
-        const response = await productService.getAllProductsForAdmin(
-          {
-            search: filters.search,
-            shopId: filters.shopId,
-            published: filters.published,
-          },
-          {
-            page: pagination.page,
-            limit: pagination.limit,
-          }
-        )
-        if (response.success) {
-          setProducts(response.data?.products || [])
-          setPagination(prev => ({
-            ...prev,
-            total: response.data.pagination.total || 0,
-            totalPages: response.data.pagination.totalPages || 1,
-          }))
+  // Extract the products fetching logic into a separate function
+  const fetchProducts = async () => {
+    setLoading(true)
+    try {
+      const response = await productService.getAllProductsForAdmin(
+        {
+          search: filters.search,
+          shopId: filters.shopId,
+          published: filters.published,
+        },
+        {
+          page: pagination.page,
+          limit: pagination.limit,
         }
-      } catch (error) {
-        console.error('Failed to fetch products', error)
-      } finally {
-        setLoading(false)
+      )
+      if (response.success) {
+        setProducts(response.data?.products || [])
+        setPagination(prev => ({
+          ...prev,
+          total: response.data.pagination.total || 0,
+          totalPages: response.data.pagination.totalPages || 1,
+        }))
       }
+    } catch (error) {
+      console.error('Failed to fetch products', error)
+    } finally {
+      setLoading(false)
     }
+  }
+
+  // Update the useEffect for fetching products to use the new function
+  useEffect(() => {
     fetchProducts()
   }, [filters, pagination.page])
 
@@ -338,6 +341,12 @@ const ProductListing = () => {
     try {
       const response = await productService.replaceVariants(selectedProduct.productId, variantData)
       if (response.success) {
+        setVariants([]) // Reset variants state
+        setNewVariantName('') // Reset input
+        setNewVariantValue('') // Reset input
+        setSelectedVariantForValue('') // Reset selection
+        setSelectedProduct(null) // Clear selected product
+
         setShowFeatureModal(false)
       }
     } catch (error) {
@@ -369,7 +378,6 @@ const ProductListing = () => {
       const newUploads = validFiles.map(file => ({
         file,
         preview: URL.createObjectURL(file),
-        isPrimary: false,
         hidden: false,
       }))
       setImageUploads([...imageUploads, ...newUploads])
@@ -381,24 +389,6 @@ const ProductListing = () => {
     URL.revokeObjectURL(newUploads[index].preview)
     newUploads.splice(index, 1)
     setImageUploads(newUploads)
-  }
-
-  const toggleImagePrimary = (imageId: number) => {
-    setProductImages(prevImages =>
-      prevImages.map(img => ({
-        ...img,
-        isPrimary: img.imageId === imageId,
-      }))
-    )
-  }
-
-  const toggleUploadPrimary = (index: number) => {
-    setImageUploads(prevUploads =>
-      prevUploads.map((upload, i) => ({
-        ...upload,
-        isPrimary: i === index,
-      }))
-    )
   }
 
   const toggleImageVisibility = (imageId: number) => {
@@ -415,10 +405,19 @@ const ProductListing = () => {
 
   const deleteImage = async (imageId: number) => {
     try {
-      await productService.deleteImage(imageId)
-      setProductImages(prevImages => prevImages.filter(img => img.imageId !== imageId))
+      setDeletingImages(prev => [...prev, imageId]) // Add to deleting list
+      const { success, message } = await productService.deleteImage(imageId)
+      if (success) {
+        setProductImages(prevImages => prevImages.filter(img => img.imageId !== imageId))
+        await fetchProducts() // Refresh product list
+      } else {
+        setImageError(message || 'Failed to delete image')
+      }
     } catch (error) {
       console.error('Failed to delete image', error)
+      setImageError('Failed to delete image. Please try again.')
+    } finally {
+      setDeletingImages(prev => prev.filter(id => id !== imageId)) // Remove from deleting list
     }
   }
 
@@ -426,51 +425,43 @@ const ProductListing = () => {
     if (!selectedProduct) return
 
     try {
-      setImageError('') // Clear any previous errors
-      setIsUploading(true) // Show loading state
+      setImageError('')
+      setIsUploading(true)
 
-      // Update existing images
+      // Update existing images (only hidden status now)
       const updatePromises = productImages.map(image =>
         productService.updateImage(image.imageId, {
-          isPrimary: image.isPrimary,
           hidden: image.hidden,
         })
       )
 
-      // Wait for all updates to complete
-      const updateResults = await Promise.all(updatePromises)
+      await Promise.all(updatePromises)
 
-      // Check for any failed updates
-      const failedUpdates = updateResults.filter(result => !result.success)
-      if (failedUpdates.length > 0) {
-        const errorMessage = failedUpdates[0].message || 'Failed to update some images'
-        throw new Error(errorMessage)
-      }
-
-      // If there are uploads, handle them
+      // Upload new images if any
       if (imageUploads.length > 0) {
         const uploadResult = await uploadImages()
         if (!uploadResult?.success) {
           throw new Error(uploadResult?.message || 'Failed to upload new images')
         }
       }
-      await fetchProducts() // Refresh product list
 
+      // Reset modal state after success
+      setImageUploads([])
+      setProductImages([])
       setShowImageModal(false)
+
+      // Refresh product data
+      await fetchProducts()
     } catch (error) {
       console.error('Failed to save image changes', error)
-
-      // Display the backend error message if available
-      const errorMessage =
+      setImageError(
         error instanceof Error ? error.message : 'Failed to save changes. Please try again.'
-
-      setImageError(errorMessage)
+      )
     } finally {
       setIsUploading(false)
     }
   }
 
-  // And modify the uploadImages function to return the response:
   const uploadImages = async () => {
     if (!selectedProduct || imageUploads.length === 0) return null
 
@@ -479,36 +470,27 @@ const ProductListing = () => {
     setImageError('')
 
     try {
-      const uploadedImages = []
+      const uploadedImages = imageUploads.map(upload => ({
+        url: '', // Will be set after FTP upload
+        hidden: upload.hidden,
+      }))
 
       for (let i = 0; i < imageUploads.length; i++) {
         const upload = imageUploads[i]
+        const response = await ftpService.uploadFile(upload.file)
 
-        try {
-          // Upload to FTP
-          const { success, data, message } = await ftpService.uploadFile(upload.file)
-
-          if (success && data?.publicUrl) {
-            uploadedImages.push({
-              url: data.publicUrl,
-              isPrimary: upload.isPrimary,
-              hidden: upload.hidden,
-            })
-          } else {
-            throw new Error(message || 'ইমেজ আপলোড করতে ব্যর্থ হয়েছে')
-          }
-        } catch (error) {
-          console.error(`Failed to upload image ${i + 1}:`, error)
-          throw error
+        if (response.success && response.data?.publicUrl) {
+          uploadedImages[i].url = response.data.publicUrl
+        } else {
+          throw new Error(response.message || 'ইমেজ আপলোড করতে ব্যর্থ হয়েছে')
         }
 
-        // Update progress
         setUploadProgress(((i + 1) / imageUploads.length) * 100)
       }
 
       // Save to product
       const response = await productService.addImages(selectedProduct.productId, uploadedImages)
-      return response // Return the response for error handling
+      return response
     } catch (error) {
       console.error('Failed to upload images', error)
       throw error
@@ -517,41 +499,6 @@ const ProductListing = () => {
       setUploadProgress(0)
     }
   }
-
-  // Extract the products fetching logic into a separate function
-  const fetchProducts = async () => {
-    setLoading(true)
-    try {
-      const response = await productService.getAllProductsForAdmin(
-        {
-          search: filters.search,
-          shopId: filters.shopId,
-          published: filters.published,
-        },
-        {
-          page: pagination.page,
-          limit: pagination.limit,
-        }
-      )
-      if (response.success) {
-        setProducts(response.data?.products || [])
-        setPagination(prev => ({
-          ...prev,
-          total: response.data.pagination.total || 0,
-          totalPages: response.data.pagination.totalPages || 1,
-        }))
-      }
-    } catch (error) {
-      console.error('Failed to fetch products', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Update the useEffect for fetching products to use the new function
-  useEffect(() => {
-    fetchProducts()
-  }, [filters, pagination.page])
 
   return (
     <div className='min-h-screen bg-gray-50 p-4 md:p-6'>
@@ -679,7 +626,7 @@ const ProductListing = () => {
                   !product.published ? 'opacity-70' : 'opacity-100'
                 }`}
               >
-                <div className='aspect-square bg-gray-100 relative'>
+                <div className='aspect-square bg-gray-100 relative overflow-hidden'>
                   {product.ProductImage.length > 0 ? (
                     <img
                       src={product.ProductImage[0].imageUrl}
@@ -1144,54 +1091,29 @@ const ProductListing = () => {
                           key={index}
                           className={`relative border rounded-lg overflow-hidden ${
                             upload.hidden ? 'opacity-60' : ''
-                          } ${isUploading ? 'animate-pulse' : ''}`}
+                          }`}
                         >
                           <img
                             src={upload.preview}
                             alt={`Upload ${index + 1}`}
                             className='w-full h-32 object-cover'
                           />
-                          {isUploading && (
-                            <div className='absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center'>
-                              <div className='animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white'></div>
-                            </div>
-                          )}
                           <div className='absolute top-2 right-2 flex gap-1'>
-                            <button
-                              onClick={() => toggleUploadPrimary(index)}
-                              className={`p-1 rounded-full ${
-                                upload.isPrimary
-                                  ? 'bg-green-500 text-white'
-                                  : 'bg-white text-gray-700'
-                              } ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                              disabled={isUploading}
-                            >
-                              {upload.isPrimary ? <FiCheck size={14} /> : null}
-                            </button>
                             <button
                               onClick={() => toggleUploadVisibility(index)}
                               className={`p-1 rounded-full ${
                                 upload.hidden ? 'bg-gray-500 text-white' : 'bg-white text-gray-700'
-                              } ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                              disabled={isUploading}
+                              }`}
                             >
                               {upload.hidden ? <FiEyeOff size={14} /> : <FiEye size={14} />}
                             </button>
                             <button
                               onClick={() => removeUploadedImage(index)}
-                              className={`p-1 rounded-full bg-red-500 text-white ${
-                                isUploading ? 'opacity-50 cursor-not-allowed' : ''
-                              }`}
-                              disabled={isUploading}
+                              className='p-1 rounded-full bg-red-500 text-white'
                             >
                               <FiTrash2 size={14} />
                             </button>
                           </div>
-                          {upload.isPrimary && (
-                            <div className='absolute bottom-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded'>
-                              Primary
-                            </div>
-                          )}
                         </div>
                       ))}
                     </div>
@@ -1216,37 +1138,41 @@ const ProductListing = () => {
                         <img
                           src={image.imageUrl}
                           alt={`Product image ${image.imageId}`}
-                          className='w-full h-32 object-cover'
+                          className={`w-full h-32 object-cover ${
+                            deletingImages.includes(image.imageId) ? 'opacity-50' : ''
+                          }`}
                         />
+                        {deletingImages.includes(image.imageId) && (
+                          <div className='absolute inset-0 flex items-center justify-center bg-black bg-opacity-30'>
+                            <div className='animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white'></div>
+                          </div>
+                        )}
                         <div className='absolute top-2 right-2 flex gap-1'>
                           <button
-                            onClick={() => toggleImagePrimary(image.imageId)}
-                            className={`p-1 rounded-full ${
-                              image.isPrimary ? 'bg-green-500 text-white' : 'bg-white text-gray-700'
-                            }`}
-                          >
-                            {image.isPrimary ? <FiCheck size={14} /> : null}
-                          </button>
-                          <button
                             onClick={() => toggleImageVisibility(image.imageId)}
+                            disabled={deletingImages.includes(image.imageId)}
                             className={`p-1 rounded-full ${
                               image.hidden ? 'bg-gray-500 text-white' : 'bg-white text-gray-700'
+                            } ${
+                              deletingImages.includes(image.imageId)
+                                ? 'opacity-50 cursor-not-allowed'
+                                : ''
                             }`}
                           >
                             {image.hidden ? <FiEyeOff size={14} /> : <FiEye size={14} />}
                           </button>
                           <button
                             onClick={() => deleteImage(image.imageId)}
-                            className='p-1 rounded-full bg-red-500 text-white'
+                            disabled={deletingImages.includes(image.imageId)}
+                            className={`p-1 rounded-full bg-red-500 text-white ${
+                              deletingImages.includes(image.imageId)
+                                ? 'opacity-50 cursor-not-allowed'
+                                : ''
+                            }`}
                           >
                             <FiTrash2 size={14} />
                           </button>
                         </div>
-                        {image.isPrimary && (
-                          <div className='absolute bottom-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded'>
-                            Primary
-                          </div>
-                        )}
                       </div>
                     ))}
                   </div>

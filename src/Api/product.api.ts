@@ -17,7 +17,6 @@ type ProductImage = {
   updatedAt: Date
   productId: number
   imageId: number
-  isPrimary: boolean
   hidden: boolean
   imageUrl: string
   featureVector: string | null

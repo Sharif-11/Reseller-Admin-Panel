@@ -10,7 +10,7 @@ import ChangePassword from './Components/ChangePassword'
 import ForgotPassword from './Components/ForgotPassword'
 import ProductListing from './Components/ProductListing'
 import AdminProfile from './Components/Profile'
-import { AuthRoute, ProtectedRoute } from './Components/ProtectedRoute'
+import { ProtectedRoute } from './Components/ProtectedRoute'
 import RoleManagement from './Components/RoleManagement'
 import SellerManagement from './Components/SellerManagement'
 import SellerWalletManagementPage from './Components/SellerWallet'
@@ -25,14 +25,19 @@ createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <Routes>
           {/* Public routes - only accessible when not logged in */}
-          <Route element={<AuthRoute />}>
-            <Route path='/' element={<AdminLogin />} />
-            <Route path='/forgot-password' element={<ForgotPassword />} />
-          </Route>
 
           {/* Protected routes - only accessible when logged in */}
-          <Route element={<ProtectedRoute />}>
-            <Route path='/dashboard' element={<AdminLayout />}>
+          <Route>
+            <Route path='/' element={<AdminLogin />} />
+            <Route path='/forgot-password' element={<ForgotPassword />} />
+            <Route
+              path='/dashboard'
+              element={
+                <ProtectedRoute>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }
+            >
               <Route index element={<h1>Dashboard</h1>} />
               <Route path='change-password' element={<ChangePassword />} />
               <Route path='profile' element={<AdminProfile />} />

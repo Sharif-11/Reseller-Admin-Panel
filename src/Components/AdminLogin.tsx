@@ -41,7 +41,7 @@ const AdminLogin = () => {
   const [hasSuperAdmin, setHasSuperAdmin] = useState(true) // Assume true initially
   const setCreatingSuperAdmin = useState(false)[1]
 
-  const { setUser, loading: authLoading } = useAuth()
+  const { setUser } = useAuth()
   const navigate = useNavigate()
 
   // Check if super admin exists
@@ -72,7 +72,7 @@ const AdminLogin = () => {
       if (success && data?.token && data?.user) {
         localStorage.setItem('token', data.token)
         setUser(data.user)
-        window.location.reload()
+        navigate('/dashboard')
       } else {
         setLoginError(message || 'লগইন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।')
       }
@@ -116,31 +116,6 @@ const AdminLogin = () => {
     } finally {
       setIsLoading(false)
     }
-  }
-
-  // Redirect if already logged in
-  useEffect(() => {
-    const verifyLogin = async () => {
-      try {
-        const { data, success } = await authService.verifyLogin()
-        if (success && data) {
-          setUser(data)
-          navigate('/dashboard', { replace: true })
-        }
-      } catch (error) {
-        console.error('Error reloading user:', error)
-      }
-    }
-    verifyLogin()
-  }, [navigate, setUser])
-
-  // Show loading state while checking auth status
-  if (authLoading) {
-    return (
-      <div className='min-h-screen flex items-center justify-center'>
-        <Loader2 className='animate-spin h-12 w-12 text-indigo-600' />
-      </div>
-    )
   }
 
   return (
