@@ -8,6 +8,7 @@ import AdminManagement from './Components/AdminManagement'
 import CategoryManagement from './Components/CategoryManagement'
 import ChangePassword from './Components/ChangePassword'
 import ForgotPassword from './Components/ForgotPassword'
+import AdminPaymentVerification from './Components/PaymentVerification'
 import ProductListing from './Components/ProductListing'
 import AdminProfile from './Components/Profile'
 import { ProtectedRoute } from './Components/ProtectedRoute'
@@ -46,6 +47,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path='role-permission' element={<RoleManagement />} />
               <Route path='system-wallet' element={<SystemWalletPage />} />
               <Route path='seller-wallet' element={<SellerWalletManagementPage />} />
+              <Route path='payment-verification' element={<AdminPaymentVerification />} />
               <Route path='shops' element={<ShopManagement />} />
               <Route path='add-product' element={<AddProduct />} />
               <Route path='products' element={<ProductListing />} />

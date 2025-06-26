@@ -448,7 +448,7 @@ const AdminLayout = () => {
               {openAccordions.payments && (
                 <div className='ml-6 mt-0.5 space-y-0.5'>
                   <NavLink
-                    to='/dashboard/payment-history'
+                    to='/dashboard/payment-verification'
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive
@@ -457,7 +457,7 @@ const AdminLayout = () => {
                       }`
                     }
                   >
-                    পেমেন্ট হিস্টোরি
+                    পেমেন্ট ভেরিফিকেশন
                   </NavLink>
                   <NavLink
                     to='/dashboard/withdraw-requests'
