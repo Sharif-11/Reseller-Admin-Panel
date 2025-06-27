@@ -5,6 +5,7 @@ import AddProduct from './Components/AddProduct'
 import AdminLayout from './Components/AdminLayout'
 import AdminLogin from './Components/AdminLogin'
 import AdminManagement from './Components/AdminManagement'
+import AdminBalanceStatement from './Components/BalanceStatement'
 import CategoryManagement from './Components/CategoryManagement'
 import ChangePassword from './Components/ChangePassword'
 import ForgotPassword from './Components/ForgotPassword'
@@ -52,6 +53,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path='add-product' element={<AddProduct />} />
               <Route path='products' element={<ProductListing />} />
               <Route path='categories' element={<CategoryManagement />} />
+              <Route path='balance-statement' element={<AdminBalanceStatement />} />
             </Route>
           </Route>
 
