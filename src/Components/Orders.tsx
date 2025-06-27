@@ -288,9 +288,7 @@ const AdminOrders = () => {
           nextTab = 'completed'
           break
         case 'cancel':
-          // response = await orderApi.cancelOrderByAdmin(selectedOrder.orderId, {
-          //   reason: actionData.remarks,
-          // })
+          response = await orderApi.cancelOrderByAdmin(selectedOrder.orderId, actionData.remarks)
           nextTab = 'others'
           break
         case 'reorder':
@@ -298,7 +296,7 @@ const AdminOrders = () => {
           nextTab = 'pending'
           break
         case 'refund':
-          // response = await orderApi.refundOrderByAdmin(selectedOrder.orderId)
+          response = await orderApi.cancelOrderByAdmin(selectedOrder.orderId)
           nextTab = 'others'
           break
         case 'return':
@@ -1153,6 +1151,10 @@ const AdminOrders = () => {
                       <span className='font-medium'>Updated:</span>{' '}
                       {formatDate(selectedOrder.updatedAt)}
                     </p>
+                    <p className='text-sm'>
+                      <span className='font-medium'>Payment Method:</span>{' '}
+                      {selectedOrder.paymentType?.toLowerCase() + ' Payment' || 'N/A'}
+                    </p>
                     {selectedOrder.courierName && (
                       <p className='text-sm'>
                         <span className='font-medium'>Courier:</span> {selectedOrder.courierName}
@@ -1219,7 +1221,7 @@ const AdminOrders = () => {
                           </div>
                         </div>
                       )}
-                      <p className='text-sm'>
+                      <p className='text-sm mt-3'>
                         <span className='font-medium'>Payment Status:</span>{' '}
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -1237,12 +1239,7 @@ const AdminOrders = () => {
                           {selectedOrder.Payment?.paymentStatus}
                         </span>
                       </p>
-                      {selectedOrder.paymentType && (
-                        <p className='text-sm'>
-                          <span className='font-medium'>Payment Method:</span>{' '}
-                          {selectedOrder.paymentType.toLowerCase()}
-                        </p>
-                      )}
+
                       {selectedOrder.amountPaidByCustomer && (
                         <p className='text-sm'>
                           <span className='font-medium'>Paid by Customer:</span>{' '}
