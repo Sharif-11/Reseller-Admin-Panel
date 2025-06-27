@@ -18,6 +18,7 @@ import SellerManagement from './Components/SellerManagement'
 import SellerWalletManagementPage from './Components/SellerWallet'
 import ShopManagement from './Components/ShopManagement'
 import SystemWalletPage from './Components/SystemWallet'
+import AdminWithdrawRequests from './Components/WithdrawRequest'
 import { UserProvider } from './Context/userContext'
 import './index.css'
 
@@ -53,6 +54,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path='add-product' element={<AddProduct />} />
               <Route path='products' element={<ProductListing />} />
               <Route path='categories' element={<CategoryManagement />} />
+              <Route path='withdraw-requests' element={<AdminWithdrawRequests />} />
               <Route path='balance-statement' element={<AdminBalanceStatement />} />
             </Route>
           </Route>
