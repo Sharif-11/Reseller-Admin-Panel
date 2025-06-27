@@ -33,7 +33,7 @@ const AdminBalanceStatement = () => {
     pageSize: 10,
     totalCount: 0,
   })
-  const [summary, setSummary] = useState({
+  const [, setSummary] = useState({
     totalRevenue: 0,
     totalCredit: 0,
     totalDebit: 0,
@@ -150,12 +150,6 @@ const AdminBalanceStatement = () => {
         <div className='bg-white rounded-lg shadow p-4'>
           <h2 className='text-sm font-medium text-gray-700'>মোট লেনদেন</h2>
           <p className='text-xl font-bold'>{pagination.totalCount}</p>
-        </div>
-        <div className='bg-white rounded-lg shadow p-4'>
-          <h2 className='text-sm font-medium text-gray-700'>মোট আয়</h2>
-          <p className='text-xl font-bold text-green-600'>
-            {Math.abs(summary.totalRevenue).toFixed(2)}৳
-          </p>
         </div>
       </div>
 

@@ -98,7 +98,7 @@ const AdminLayout = () => {
             </NavLink>
             {/* Add this after the last NavLink but before the closing </nav> tag */}
             <NavLink
-              to='/dashboard/orders'
+              to='/dashboard/order-management'
               className={({ isActive }) =>
                 `flex items-center px-3 py-2 rounded-lg transition-all text-sm ${
                   isActive ? 'bg-indigo-600 text-white' : 'text-indigo-100 hover:bg-indigo-600/50'

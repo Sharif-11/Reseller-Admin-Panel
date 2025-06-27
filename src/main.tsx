@@ -9,6 +9,7 @@ import AdminBalanceStatement from './Components/BalanceStatement'
 import CategoryManagement from './Components/CategoryManagement'
 import ChangePassword from './Components/ChangePassword'
 import ForgotPassword from './Components/ForgotPassword'
+import AdminOrders from './Components/Orders'
 import AdminPaymentVerification from './Components/PaymentVerification'
 import ProductListing from './Components/ProductListing'
 import AdminProfile from './Components/Profile'
@@ -46,6 +47,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path='profile' element={<AdminProfile />} />
               <Route path='seller-management' element={<SellerManagement />} />
               <Route path='admin-management' element={<AdminManagement />} />
+              <Route path='order-management' element={<AdminOrders />} />
               <Route path='role-permission' element={<RoleManagement />} />
               <Route path='system-wallet' element={<SystemWalletPage />} />
               <Route path='seller-wallet' element={<SellerWalletManagementPage />} />

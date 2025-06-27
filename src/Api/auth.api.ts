@@ -14,7 +14,7 @@ interface ChangePasswordData {
 class AuthService {
   // Login with phone number and password
   async login(credentials: LoginCredentials): Promise<ApiResponse<any>> {
-    return apiClient.post<any>('auth/login', credentials)
+    return apiClient.post<any>('auth/admin-login', credentials)
   }
 
   // Verify current login session

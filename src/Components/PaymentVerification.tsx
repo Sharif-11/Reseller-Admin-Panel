@@ -371,24 +371,13 @@ const AdminPaymentVerification = () => {
                 />
               </div>
               <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Phone Number</label>
-                <input
-                  type='text'
-                  name='phoneNo'
-                  value={filters.phoneNo}
-                  onChange={handleFilterChange}
-                  placeholder='Search by phone number'
-                  className='w-full px-3 py-1.5 border rounded-md text-sm'
-                />
-              </div>
-              <div>
                 <label className='block text-sm font-medium text-gray-700 mb-1'>Search</label>
                 <input
                   type='text'
                   name='search'
                   value={filters.search}
                   onChange={handleFilterChange}
-                  placeholder='Search by name or wallet'
+                  placeholder='Search by name or phone number'
                   className='w-full px-3 py-1.5 border rounded-md text-sm'
                 />
               </div>
@@ -489,14 +478,10 @@ const AdminPaymentVerification = () => {
                     <td className='px-4 py-4 whitespace-nowrap text-gray-900'>
                       <div className='font-medium'>{payment.amount}৳</div>
                       {payment.transactionFee && (
-                        <div className='text-xs text-gray-500'>
-                          Fee: {payment.transactionFee.toFixed(2)}৳
-                        </div>
+                        <div className='text-xs text-gray-500'>Fee: {payment.transactionFee}৳</div>
                       )}
                       {payment.actualAmount && (
-                        <div className='text-xs text-gray-500'>
-                          Net: {payment.actualAmount.toFixed(2)}৳
-                        </div>
+                        <div className='text-xs text-gray-500'>Net: {payment.actualAmount}৳</div>
                       )}
                     </td>
                     <td className='px-4 py-4 whitespace-nowrap'>
@@ -582,14 +567,10 @@ const AdminPaymentVerification = () => {
                     <p className='text-gray-500'>Amount:</p>
                     <p className='font-medium'>{payment.amount}৳</p>
                     {payment.transactionFee && (
-                      <p className='text-gray-500 text-xs'>
-                        Fee: {payment.transactionFee.toFixed(2)}৳
-                      </p>
+                      <p className='text-gray-500 text-xs'>Fee: {payment.transactionFee}৳</p>
                     )}
                     {payment.actualAmount && (
-                      <p className='text-gray-500 text-xs'>
-                        Net: {payment.actualAmount.toFixed(2)}৳
-                      </p>
+                      <p className='text-gray-500 text-xs'>Net: {payment.actualAmount}৳</p>
                     )}
                   </div>
                   <div>
