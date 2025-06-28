@@ -19,7 +19,7 @@ type CommissionTableData = {
 }
 
 const CommissionTable = () => {
-  const [initialData, setInitialData] = useState<CommissionTableData | null>(null)
+  const [, setInitialData] = useState<CommissionTableData | null>(null)
   const [tableData, setTableData] = useState<CommissionTableData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)

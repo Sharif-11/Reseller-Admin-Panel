@@ -120,10 +120,8 @@ const AdminBalanceStatement = () => {
     if (typeof reference === 'object') {
       return (
         <div className='space-y-1'>
-          {reference.name && <p className='text-gray-900'>সেলার: {reference.name}</p>}
-          {reference.referralLevel && (
-            <p className='text-gray-900'>রেফারেল লেভেল: {reference.referralLevel}</p>
-          )}
+          {reference.seller && <p className='text-gray-900'>সেলার: {reference.seller}</p>}
+          {reference.level && <p className='text-gray-900'>রেফারেল লেভেল: {reference.level}</p>}
         </div>
       )
     }

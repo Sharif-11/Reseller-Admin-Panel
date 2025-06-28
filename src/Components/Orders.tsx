@@ -182,7 +182,7 @@ const AdminOrders = () => {
 
   useEffect(() => {
     fetchOrders()
-  }, [activeTab, pagination[activeTab].pageSize])
+  }, [activeTab, pagination[activeTab].pageSize, searchQuery])
 
   const getStatusBadge = (status: OrderStatus) => {
     const baseClasses = 'px-2 py-1 rounded-full text-xs font-medium'
@@ -249,10 +249,7 @@ const AdminOrders = () => {
       return
     }
 
-    if (
-      (currentAction === 'cancel' || currentAction === 'return' || currentAction === 'fail') &&
-      !actionData.remarks.trim()
-    ) {
+    if (currentAction === 'cancel' && !actionData.remarks.trim()) {
       setActionError('Reason is required')
       return
     }
@@ -282,33 +279,30 @@ const AdminOrders = () => {
           nextTab = 'delivered'
           break
         case 'complete':
-          // response = await orderApi.completeOrderByAdmin(selectedOrder.orderId, {
-          //   amountPaidByCustomer: actionData.amountPaidByCustomer,
-          // })
+          response = await orderApi.completeOrderByAdmin(
+            selectedOrder.orderId,
+            actionData.amountPaidByCustomer ? parseFloat(actionData.amountPaidByCustomer) : 0
+          )
           nextTab = 'completed'
           break
         case 'cancel':
           response = await orderApi.cancelOrderByAdmin(selectedOrder.orderId, actionData.remarks)
           nextTab = 'others'
           break
-        case 'reorder':
-          // response = await orderApi.reorderOrderByAdmin(selectedOrder.orderId)
-          nextTab = 'pending'
-          break
+        // case 'reorder':
+        //   response = await orderApi.mardOrderAsFailedByAdmin(selectedOrder.orderId)
+        //   nextTab = 'pending'
+        //   break
         case 'refund':
           response = await orderApi.cancelOrderByAdmin(selectedOrder.orderId)
           nextTab = 'others'
           break
         case 'return':
-          // response = await orderApi.returnOrderByAdmin(selectedOrder.orderId, {
-          //   reason: actionData.remarks,
-          // })
+          response = await orderApi.returnOrderByAdmin(selectedOrder.orderId)
           nextTab = 'others'
           break
         case 'fail':
-          // response = await orderApi.failOrderByAdmin(selectedOrder.orderId, {
-          //   reason: actionData.remarks,
-          // })
+          response = await orderApi.mardOrderAsFailedByAdmin(selectedOrder.orderId)
           nextTab = 'others'
           break
         default:
@@ -650,14 +644,6 @@ const AdminOrders = () => {
                     )}
 
                     {/* FAILED - Show Reorder option */}
-                    {order.orderStatus === 'FAILED' && (
-                      <button
-                        onClick={() => openActionModal('reorder', order)}
-                        className='py-1 px-2 bg-pink-50 text-pink-600 rounded font-medium text-xs'
-                      >
-                        Reorder
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>
@@ -796,16 +782,6 @@ const AdminOrders = () => {
                             Mark as Failed
                           </button>
                         </>
-                      )}
-
-                      {/* FAILED - Reorder option */}
-                      {order.orderStatus === 'FAILED' && (
-                        <button
-                          onClick={() => openActionModal('reorder', order)}
-                          className='text-pink-600 hover:text-pink-800'
-                        >
-                          Reorder
-                        </button>
                       )}
                     </td>
                   </tr>

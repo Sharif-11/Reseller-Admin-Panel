@@ -41,6 +41,15 @@ class OrderApi {
   public deliverOrderByAdmin({ orderId, trackingUrl }: { orderId: number; trackingUrl: string }) {
     return apiClient.post(`orders/admin/deliver/${orderId}`, { trackingUrl })
   }
+  public completeOrderByAdmin(orderId: number, amountPaidByCustomer: number) {
+    return apiClient.post(`orders/admin/complete/${orderId}`, { amountPaidByCustomer })
+  }
+  public returnOrderByAdmin(orderId: number) {
+    return apiClient.post(`orders/admin/return/${orderId}`)
+  }
+  public mardOrderAsFailedByAdmin(orderId: number) {
+    return apiClient.post(`orders/admin/fail/${orderId}`)
+  }
 }
 
 export const orderApi = new OrderApi()
