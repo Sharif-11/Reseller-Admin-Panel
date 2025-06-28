@@ -8,6 +8,7 @@ import AdminManagement from './Components/AdminManagement'
 import AdminBalanceStatement from './Components/BalanceStatement'
 import CategoryManagement from './Components/CategoryManagement'
 import ChangePassword from './Components/ChangePassword'
+import CommissionTable from './Components/CommissionTable'
 import ForgotPassword from './Components/ForgotPassword'
 import AdminOrders from './Components/Orders'
 import AdminPaymentVerification from './Components/PaymentVerification'
@@ -58,6 +59,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path='categories' element={<CategoryManagement />} />
               <Route path='withdraw-requests' element={<AdminWithdrawRequests />} />
               <Route path='balance-statement' element={<AdminBalanceStatement />} />
+              <Route path='commission-management' element={<CommissionTable />} />
             </Route>
           </Route>
 

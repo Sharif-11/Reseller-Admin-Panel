@@ -11,19 +11,14 @@ const AdminLayout = () => {
     shops: false,
     wallets: false,
     payments: false,
+    settings: false,
   })
   const { user } = useContext(UserContext)
 
   type AccordionKey = keyof typeof openAccordions
 
   const toggleAccordion = (key: string) => {
-    if (
-      key === 'products' ||
-      key === 'users' ||
-      key === 'shops' ||
-      key === 'wallets' ||
-      key === 'payments'
-    ) {
+    if (Object.keys(openAccordions).includes(key)) {
       setOpenAccordions(prev => ({
         ...prev,
         [key]: !prev[key as AccordionKey],
@@ -96,7 +91,8 @@ const AdminLayout = () => {
               </svg>
               প্রোফাইল
             </NavLink>
-            {/* Add this after the last NavLink but before the closing </nav> tag */}
+
+            {/* Order Management */}
             <NavLink
               to='/dashboard/order-management'
               className={({ isActive }) =>
@@ -115,8 +111,6 @@ const AdminLayout = () => {
               </svg>
               অর্ডার ম্যানেজমেন্ট
             </NavLink>
-
-            {/* Change Password */}
 
             {/* Product Management */}
             <div className='border-b border-indigo-600/30 pb-0.5'>
@@ -264,7 +258,6 @@ const AdminLayout = () => {
                   >
                     অ্যাডমিন ম্যানেজমেন্ট
                   </NavLink>
-
                   <NavLink
                     to='/dashboard/role-permission'
                     className={({ isActive }) =>
@@ -475,7 +468,8 @@ const AdminLayout = () => {
                 </div>
               )}
             </div>
-            {/* create a new section for balance statement with icon */}
+
+            {/* Balance Statement */}
             <NavLink
               to='/dashboard/balance-statement'
               className={({ isActive }) =>
@@ -501,50 +495,112 @@ const AdminLayout = () => {
               ব্যালেন্স স্টেটমেন্ট
             </NavLink>
 
-            {/* Settings */}
-            <NavLink
-              to='/settings'
-              className={({ isActive }) =>
-                `flex items-center px-3 py-2 rounded-lg transition-all text-sm ${
-                  isActive ? 'bg-indigo-600 text-white' : 'text-indigo-100 hover:bg-indigo-600/50'
-                }`
-              }
-            >
-              <svg
-                className='w-4 h-4 mr-2'
-                xmlns='http://www.w3.org/2000/svg'
-                width='24'
-                height='24'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'
+            {/* Settings Section */}
+            <div className='border-b border-indigo-600/30 pb-0.5'>
+              <button
+                onClick={() => toggleAccordion('settings')}
+                className='w-full flex items-center justify-between px-3 py-2 text-indigo-100 hover:bg-indigo-600/30 rounded-lg transition-all text-sm'
               >
-                <circle cx='12' cy='12' r='3'></circle>
-                <path d='M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z'></path>
-              </svg>
-              সেটিংস
-            </NavLink>
-            <NavLink
-              to='/dashboard/change-password'
-              className={({ isActive }) =>
-                `flex items-center px-3 py-2 rounded-lg transition-all text-sm ${
-                  isActive ? 'bg-indigo-600 text-white' : 'text-indigo-100 hover:bg-indigo-600/50'
-                }`
-              }
-            >
-              <svg className='w-4 h-4 mr-2' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                <path
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                  strokeWidth={2}
-                  d='M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z'
-                />
-              </svg>
-              পাসওয়ার্ড পরিবর্তন
-            </NavLink>
+                <div className='flex items-center'>
+                  <svg
+                    className='w-4 h-4 mr-2'
+                    xmlns='http://www.w3.org/2000/svg'
+                    width='24'
+                    height='24'
+                    viewBox='0 0 24 24'
+                    fill='none'
+                    stroke='currentColor'
+                    strokeWidth='2'
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                  >
+                    <circle cx='12' cy='12' r='3'></circle>
+                    <path d='M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z'></path>
+                  </svg>
+                  সেটিংস
+                </div>
+                <svg
+                  className={`w-3 h-3 transition-transform duration-200 ${
+                    openAccordions.settings ? 'transform rotate-180' : ''
+                  }`}
+                  fill='none'
+                  stroke='currentColor'
+                  viewBox='0 0 24 24'
+                >
+                  <path
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    strokeWidth={2}
+                    d='M19 9l-7 7-7-7'
+                  />
+                </svg>
+              </button>
+
+              {openAccordions.settings && (
+                <div className='ml-6 mt-0.5 space-y-0.5'>
+                  <NavLink
+                    to='/dashboard/commission-management'
+                    className={({ isActive }) =>
+                      `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
+                        isActive
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-indigo-100 hover:bg-indigo-600/30'
+                      }`
+                    }
+                  >
+                    কমিশন ম্যানেজমেন্ট
+                  </NavLink>
+                  <NavLink
+                    to='/dashboard/announcement-management'
+                    className={({ isActive }) =>
+                      `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
+                        isActive
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-indigo-100 hover:bg-indigo-600/30'
+                      }`
+                    }
+                  >
+                    ঘোষণা ম্যানেজমেন্ট
+                  </NavLink>
+                  <NavLink
+                    to='/dashboard/system-settings'
+                    className={({ isActive }) =>
+                      `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
+                        isActive
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-indigo-100 hover:bg-indigo-600/30'
+                      }`
+                    }
+                  >
+                    সিস্টেম সেটিংস
+                  </NavLink>
+                  <NavLink
+                    to='/dashboard/notification-settings'
+                    className={({ isActive }) =>
+                      `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
+                        isActive
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-indigo-100 hover:bg-indigo-600/30'
+                      }`
+                    }
+                  >
+                    নোটিফিকেশন সেটিংস
+                  </NavLink>
+                  <NavLink
+                    to='/dashboard/change-password'
+                    className={({ isActive }) =>
+                      `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
+                        isActive
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-indigo-100 hover:bg-indigo-600/30'
+                      }`
+                    }
+                  >
+                    পাসওয়ার্ড পরিবর্তন
+                  </NavLink>
+                </div>
+              )}
+            </div>
           </nav>
         </aside>
 
