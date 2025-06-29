@@ -5,6 +5,7 @@ import AddProduct from './Components/AddProduct'
 import AdminLayout from './Components/AdminLayout'
 import AdminLogin from './Components/AdminLogin'
 import AdminManagement from './Components/AdminManagement'
+import AnnouncementManagement from './Components/Announcement'
 import AdminBalanceStatement from './Components/BalanceStatement'
 import CategoryManagement from './Components/CategoryManagement'
 import ChangePassword from './Components/ChangePassword'
@@ -60,6 +61,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path='withdraw-requests' element={<AdminWithdrawRequests />} />
               <Route path='balance-statement' element={<AdminBalanceStatement />} />
               <Route path='commission-management' element={<CommissionTable />} />
+              <Route path='announcement-management' element={<AnnouncementManagement />} />
             </Route>
           </Route>
 
