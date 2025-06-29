@@ -26,6 +26,12 @@ const AdminLayout = () => {
     }
   }
 
+  const handleNavClick = () => {
+    if (window.innerWidth < 768) {
+      setIsSidebarOpen(false)
+    }
+  }
+
   return (
     <div className='min-h-screen bg-gray-50'>
       <AdminHeader setIsSidebarOpen={setIsSidebarOpen} />
@@ -55,6 +61,7 @@ const AdminLayout = () => {
             {/* Dashboard */}
             <NavLink
               to='/dashboard'
+              onClick={handleNavClick}
               className={({ isActive }) =>
                 `flex items-center px-3 py-2 rounded-lg transition-all text-sm ${
                   isActive ? 'bg-indigo-600 text-white' : 'text-indigo-100 hover:bg-indigo-600/50'
@@ -75,6 +82,7 @@ const AdminLayout = () => {
             {/* Profile */}
             <NavLink
               to='/dashboard/profile'
+              onClick={handleNavClick}
               className={({ isActive }) =>
                 `flex items-center px-3 py-2 rounded-lg transition-all text-sm ${
                   isActive ? 'bg-indigo-600 text-white' : 'text-indigo-100 hover:bg-indigo-600/50'
@@ -95,6 +103,7 @@ const AdminLayout = () => {
             {/* Order Management */}
             <NavLink
               to='/dashboard/order-management'
+              onClick={handleNavClick}
               className={({ isActive }) =>
                 `flex items-center px-3 py-2 rounded-lg transition-all text-sm ${
                   isActive ? 'bg-indigo-600 text-white' : 'text-indigo-100 hover:bg-indigo-600/50'
@@ -155,6 +164,7 @@ const AdminLayout = () => {
                 <div className='ml-6 mt-0.5 space-y-0.5'>
                   <NavLink
                     to='/dashboard/products'
+                    onClick={handleNavClick}
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive
@@ -167,6 +177,7 @@ const AdminLayout = () => {
                   </NavLink>
                   <NavLink
                     to='/dashboard/add-product'
+                    onClick={handleNavClick}
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive
@@ -179,6 +190,7 @@ const AdminLayout = () => {
                   </NavLink>
                   <NavLink
                     to='/dashboard/categories'
+                    onClick={handleNavClick}
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive
@@ -236,6 +248,7 @@ const AdminLayout = () => {
                 <div className='ml-6 mt-0.5 space-y-0.5'>
                   <NavLink
                     to='/dashboard/seller-management'
+                    onClick={handleNavClick}
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive
@@ -248,6 +261,7 @@ const AdminLayout = () => {
                   </NavLink>
                   <NavLink
                     to='/dashboard/admin-management'
+                    onClick={handleNavClick}
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive
@@ -260,6 +274,7 @@ const AdminLayout = () => {
                   </NavLink>
                   <NavLink
                     to='/dashboard/role-permission'
+                    onClick={handleNavClick}
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive
@@ -317,6 +332,7 @@ const AdminLayout = () => {
                 <div className='ml-6 mt-0.5 space-y-0.5'>
                   <NavLink
                     to='/dashboard/shops'
+                    onClick={handleNavClick}
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive
@@ -374,6 +390,7 @@ const AdminLayout = () => {
                 <div className='ml-6 mt-0.5 space-y-0.5'>
                   <NavLink
                     to='/dashboard/system-wallet'
+                    onClick={handleNavClick}
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive
@@ -386,6 +403,7 @@ const AdminLayout = () => {
                   </NavLink>
                   <NavLink
                     to='/dashboard/seller-wallet'
+                    onClick={handleNavClick}
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive
@@ -443,6 +461,7 @@ const AdminLayout = () => {
                 <div className='ml-6 mt-0.5 space-y-0.5'>
                   <NavLink
                     to='/dashboard/payment-verification'
+                    onClick={handleNavClick}
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive
@@ -455,6 +474,7 @@ const AdminLayout = () => {
                   </NavLink>
                   <NavLink
                     to='/dashboard/withdraw-requests'
+                    onClick={handleNavClick}
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive
@@ -472,6 +492,7 @@ const AdminLayout = () => {
             {/* Balance Statement */}
             <NavLink
               to='/dashboard/balance-statement'
+              onClick={handleNavClick}
               className={({ isActive }) =>
                 `flex items-center px-3 py-2 rounded-lg transition-all text-sm ${
                   isActive ? 'bg-indigo-600 text-white' : 'text-indigo-100 hover:bg-indigo-600/50'
@@ -540,6 +561,7 @@ const AdminLayout = () => {
                 <div className='ml-6 mt-0.5 space-y-0.5'>
                   <NavLink
                     to='/dashboard/commission-management'
+                    onClick={handleNavClick}
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive
@@ -552,6 +574,7 @@ const AdminLayout = () => {
                   </NavLink>
                   <NavLink
                     to='/dashboard/announcement-management'
+                    onClick={handleNavClick}
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive
@@ -562,20 +585,10 @@ const AdminLayout = () => {
                   >
                     ঘোষণা ম্যানেজমেন্ট
                   </NavLink>
-                  <NavLink
-                    to='/dashboard/system-settings'
-                    className={({ isActive }) =>
-                      `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
-                        isActive
-                          ? 'bg-indigo-600 text-white'
-                          : 'text-indigo-100 hover:bg-indigo-600/30'
-                      }`
-                    }
-                  >
-                    সিস্টেম সেটিংস
-                  </NavLink>
+
                   <NavLink
                     to='/dashboard/notification-settings'
+                    onClick={handleNavClick}
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive
@@ -588,6 +601,7 @@ const AdminLayout = () => {
                   </NavLink>
                   <NavLink
                     to='/dashboard/change-password'
+                    onClick={handleNavClick}
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
                         isActive
@@ -604,7 +618,7 @@ const AdminLayout = () => {
           </nav>
         </aside>
 
-        {/* Main Content - Made wider for mobile */}
+        {/* Main Content */}
         <main className='flex-1 w-full p-0 bg-white md:bg-transparent md:rounded-tl-lg overflow-hidden'>
           <div className='bg-white min-h-[calc(100vh-4rem)] p-4 md:p-6'>
             <Outlet />

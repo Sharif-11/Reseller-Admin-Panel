@@ -342,7 +342,7 @@ const AdminManagement = () => {
   useEffect(() => {
     fetchAdmins()
     fetchAllRoles()
-  }, [currentPage, pageSize])
+  }, [currentPage, pageSize, searchTerm])
 
   // Close messages after 5 seconds
   useEffect(() => {

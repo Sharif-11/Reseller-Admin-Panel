@@ -10,6 +10,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline'
 import { useEffect, useState } from 'react'
+import { authService } from '../Api/auth.api'
 import { blockApiService, type BlockActionType } from '../Api/block.api'
 import { userManagementApiService, type User } from '../Api/user.api'
 
@@ -144,9 +145,18 @@ const SellerManagement = () => {
 
     try {
       // Here you would call your API to send the message
-      setSuccess(`Message sent to ${selectedSeller.name}`)
-      closeModal()
-      setMessageContent('')
+      // setSuccess(`Message sent to ${selectedSeller.name}`)
+      const { success, message } = await authService.sendDirectMessage({
+        userId: selectedSeller.userId,
+        content: messageContent,
+      })
+      if (success) {
+        setSuccess('Message sent successfully')
+        closeModal()
+        setMessageContent('')
+      } else {
+        setError(message || 'Failed to send message')
+      }
     } catch (err) {
       setError('Failed to send message')
     }
@@ -185,7 +195,7 @@ const SellerManagement = () => {
   useEffect(() => {
     fetchSellers()
     fetchAvailableBlockActions()
-  }, [currentPage, pageSize])
+  }, [currentPage, pageSize, searchTerm])
 
   // Close messages after 5 seconds
   useEffect(() => {
@@ -684,7 +694,7 @@ const SellerManagement = () => {
       {/* Block Actions Modal */}
       {activeModal === 'block' && selectedSeller && (
         <div className='fixed inset-0 z-50 overflow-y-auto'>
-          <div className='flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0'>
+          <div className='flex items-center justify-center min-h-screen pt- px-4 pb-20 text-center sm:block sm:p-0'>
             <div
               className='fixed inset-0 transition-opacity bg-black bg-opacity-50'
               aria-hidden='true'

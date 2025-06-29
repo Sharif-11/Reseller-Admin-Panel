@@ -161,12 +161,7 @@ const AdminHeader = ({
                   >
                     Profile
                   </Link>
-                  <Link
-                    to='/dashboard/settings'
-                    className='block px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition'
-                  >
-                    Settings
-                  </Link>
+
                   <button
                     onClick={handleLogout}
                     className='block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition'

@@ -12,6 +12,74 @@ import * as Yup from 'yup'
 import { ftpService } from '../Api/ftp.api'
 import { shopApiService } from '../Api/shop.api'
 
+// District (Zilla) data only
+const districts = [
+  'Barguna',
+  'Barishal',
+  'Bhola',
+  'Jhalokati',
+  'Patuakhali',
+  'Pirojpur',
+  'Bandarban',
+  'Brahmanbaria',
+  'Chandpur',
+  'Chattogram',
+  "Cox's Bazar",
+  'Cumilla',
+  'Feni',
+  'Khagrachari',
+  'Lakshmipur',
+  'Noakhali',
+  'Rangamati',
+  'Dhaka',
+  'Faridpur',
+  'Gazipur',
+  'Gopalganj',
+  'Kishoreganj',
+  'Madaripur',
+  'Manikganj',
+  'Munshiganj',
+  'Narayanganj',
+  'Narsingdi',
+  'Rajbari',
+  'Shariatpur',
+  'Tangail',
+  'Bagerhat',
+  'Chuadanga',
+  'Jashore',
+  'Jhenaidah',
+  'Khulna',
+  'Kushtia',
+  'Magura',
+  'Meherpur',
+  'Narail',
+  'Satkhira',
+  'Jamalpur',
+  'Mymensingh',
+  'Netrokona',
+  'Sherpur',
+  'Bogura',
+  'Joypurhat',
+  'Naogaon',
+  'Natore',
+  'Chapai Nawabganj',
+  'Pabna',
+  'Rajshahi',
+  'Sirajganj',
+  'Dinajpur',
+  'Gaibandha',
+  'Kurigram',
+  'Lalmonirhat',
+  'Nilphamari',
+  'Panchagarh',
+  'Rangpur',
+  'Thakurgaon',
+  'Habiganj',
+  'Moulvibazar',
+  'Sunamganj',
+  'Sylhet',
+]
+
 const ShopManagement = () => {
   const [shops, setShops] = useState<any[]>([])
   const [filteredShops, setFilteredShops] = useState<any[]>([])
@@ -37,7 +105,7 @@ const ShopManagement = () => {
     shopName: Yup.string()
       .required('শপের নাম আবশ্যক')
       .min(3, 'শপের নাম অবশ্যই ৩ অক্ষরের বেশি হতে হবে'),
-    shopLocation: Yup.string().required('শপের স্ট্যাটাসন আবশ্যক'),
+    shopLocation: Yup.string().required('শপের লোকেশন আবশ্যক'),
     deliveryChargeInside: Yup.number()
       .required('ডেলিভারি চার্জ (ভিতরে) আবশ্যক')
       .min(0, 'ডেলিভারি চার্জ শূন্য বা তার বেশি হতে হবে'),
@@ -538,7 +606,7 @@ const ShopManagement = () => {
               <div className='bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4'>
                 <div className='flex justify-between items-start'>
                   <h3 className='text-lg leading-6 font-medium text-gray-900'>
-                    {editingShop ? 'শপ সম্পাদনা' : 'নতুন শপ তৈরি'}
+                    {editingShop ? 'শপ এডিট করুন' : 'নতুন শপ তৈরি'}
                   </h3>
                   <button
                     onClick={() => setIsModalOpen(false)}
@@ -586,17 +654,23 @@ const ShopManagement = () => {
                         htmlFor='shopLocation'
                         className='block text-sm font-medium text-gray-700'
                       >
-                        শপের লোকেশন *
+                        শপের লোকেশন (জেলা) *
                       </label>
-                      <input
+                      <select
                         id='shopLocation'
                         name='shopLocation'
-                        type='text'
                         className='mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500'
                         value={formik.values.shopLocation}
                         onChange={formik.handleChange}
                         onBlur={formik.handleBlur}
-                      />
+                      >
+                        <option value=''>জেলা নির্বাচন করুন</option>
+                        {districts.map(district => (
+                          <option key={district} value={district}>
+                            {district}
+                          </option>
+                        ))}
+                      </select>
                       {formik.touched.shopLocation && formik.errors.shopLocation ? (
                         <p className='mt-1 text-sm text-red-600'>{formik.errors.shopLocation}</p>
                       ) : null}

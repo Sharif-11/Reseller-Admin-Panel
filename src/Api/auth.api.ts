@@ -63,6 +63,9 @@ class AuthService {
       email,
     })
   }
+  async sendDirectMessage({ userId, content }: { userId: string; content: string }) {
+    return apiClient.post(`auth/send-message/${userId}`, { content })
+  }
   // profile fetch
 }
 
