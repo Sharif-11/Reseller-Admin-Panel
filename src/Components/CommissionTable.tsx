@@ -14,7 +14,7 @@ type CommissionTableData = {
     startPrice: number
     endPrice: number | null
   }[]
-  levels: number[]
+  levels: number[] // This will always be sequential starting from 1
   commissions: Record<string, number> // Key format: "startPrice|endPrice|level"
 }
 
@@ -69,8 +69,10 @@ const CommissionTable = () => {
             })
             .sort((a, b) => a.startPrice - b.startPrice)
 
-          // Extract unique levels
-          const levels = Array.from(new Set(commissions.map(c => c.level))).sort((a, b) => a - b)
+          // Extract unique levels and ensure they're sequential starting from 1
+          const levels = Array.from(new Set(commissions.map(c => c.level)))
+            .sort((a, b) => a - b)
+            .map((_, index) => index + 1)
 
           // Create commissions map
           const commissionsMap: Record<string, number> = {}
@@ -108,7 +110,8 @@ const CommissionTable = () => {
   const addLevel = () => {
     if (!tableData) return
 
-    const newLevel = Math.max(...tableData.levels, 0) + 1
+    const newLevel =
+      tableData.levels.length > 0 ? tableData.levels[tableData.levels.length - 1] + 1 : 1
     const newCommissions = { ...tableData.commissions }
 
     // Add 0 commission for all price ranges for the new level
@@ -304,22 +307,29 @@ const CommissionTable = () => {
     setDeleteConfig(null)
   }
 
-  // Delete level
-  const deleteLevel = (level: number) => {
+  // Delete level and renumber remaining levels
+  const deleteLevel = (levelToDelete: number) => {
     if (!tableData || tableData.levels.length <= 1) {
       setError('Must have at least one level')
       return
     }
 
-    // Remove the level from levels array
-    const newLevels = tableData.levels.filter(l => l !== level)
+    // Create new levels array (renumbered sequentially starting from 1)
+    const newLevels = tableData.levels.filter(l => l !== levelToDelete).map((_, index) => index + 1)
 
-    // Remove all commissions for this level
-    const newCommissions = { ...tableData.commissions }
-    Object.keys(newCommissions).forEach(key => {
-      const [, , keyLevel] = key.split('|')
-      if (parseInt(keyLevel) === level) {
-        delete newCommissions[key]
+    // Create new commissions object with renumbered levels
+    const newCommissions: Record<string, number> = {}
+
+    tableData.priceRanges.forEach(range => {
+      // Process levels in order, skipping the deleted one
+      let newLevelIndex = 1
+      for (const oldLevel of tableData.levels) {
+        if (oldLevel === levelToDelete) continue
+
+        const oldKey = `${range.startPrice}|${range.endPrice}|${oldLevel}`
+        const newKey = `${range.startPrice}|${range.endPrice}|${newLevelIndex}`
+        newCommissions[newKey] = tableData.commissions[oldKey] || 0
+        newLevelIndex++
       }
     })
 
@@ -329,7 +339,7 @@ const CommissionTable = () => {
       commissions: newCommissions,
     })
 
-    setSuccess(`Level ${level} deleted`)
+    setSuccess(`Level ${levelToDelete} deleted and levels renumbered`)
     setShowDeleteModal(false)
     setDeleteConfig(null)
   }
@@ -456,13 +466,13 @@ const CommissionTable = () => {
               <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
                 Price Range
               </th>
-              {tableData.levels.map(level => (
+              {tableData.levels.map((level, index) => (
                 <th
                   key={level}
                   className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'
                 >
                   <div className='flex items-center justify-between'>
-                    <span>Level {level}</span>
+                    <span>Level {index + 1}</span>
                     {tableData.levels.length > 1 && (
                       <button
                         onClick={() => {
@@ -594,7 +604,7 @@ const CommissionTable = () => {
         title={deleteConfig?.type === 'level' ? 'Delete Level' : 'Delete Price Range'}
         message={
           deleteConfig?.type === 'level'
-            ? `Are you sure you want to delete Level ${deleteConfig.level}?`
+            ? `Are you sure you want to delete Level ${deleteConfig.level}? All levels will be renumbered.`
             : `Are you sure you want to delete price range ${
                 deleteConfig?.rangeIndex !== undefined
                   ? tableData.priceRanges[deleteConfig.rangeIndex].startPrice +
@@ -617,6 +627,8 @@ const CommissionTable = () => {
           <li>Leave end price empty for open-ended ranges</li>
           <li>Values are saved when you click outside the input field</li>
           <li>Click "Save Changes" to submit your updates to the server</li>
+          <li>Levels are always numbered sequentially starting from 1</li>
+          <li>When deleting a level, remaining levels will be renumbered</li>
         </ul>
       </div>
     </div>
