@@ -5,6 +5,7 @@ export interface User {
   userId: string
   phoneNo: string
   name: string
+  balance: number
   email?: string
   zilla?: string
   upazilla?: string

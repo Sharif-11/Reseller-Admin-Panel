@@ -195,22 +195,6 @@ const AddProductBasic = () => {
   return (
     <div className='max-w-4xl mx-auto p-4'>
       {/* Success and Error Messages */}
-      {success && (
-        <div className='bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-md mb-4 flex justify-between items-center'>
-          <span>{success}</span>
-          <button onClick={() => setSuccess(null)} className='text-green-700'>
-            <XMarkIcon className='h-5 w-5' />
-          </button>
-        </div>
-      )}
-      {error && (
-        <div className='bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4 flex justify-between items-center'>
-          <span>{error}</span>
-          <button onClick={() => setError(null)} className='text-red-700'>
-            <XMarkIcon className='h-5 w-5' />
-          </button>
-        </div>
-      )}
 
       <h1 className='text-2xl font-bold text-gray-800 mb-6'>নতুন প্রোডাক্ট যোগ করুন </h1>
 
@@ -373,6 +357,22 @@ const AddProductBasic = () => {
             )}
           </div>
         </div>
+        {success && (
+          <div className='bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-md mb-4 flex justify-between items-center'>
+            <span>{success}</span>
+            <button onClick={() => setSuccess(null)} className='text-green-700'>
+              <XMarkIcon className='h-5 w-5' />
+            </button>
+          </div>
+        )}
+        {error && (
+          <div className='bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4 flex justify-between items-center'>
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className='text-red-700'>
+              <XMarkIcon className='h-5 w-5' />
+            </button>
+          </div>
+        )}
 
         {/* Submit Button */}
         <div className='pt-4'>

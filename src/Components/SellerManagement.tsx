@@ -611,6 +611,10 @@ const SellerManagement = () => {
                       <p className='mt-1 text-sm text-gray-900'>{selectedSeller.phoneNo}</p>
                     </div>
                     <div>
+                      <h4 className='text-sm font-medium text-gray-500'>Balance</h4>
+                      <p className='mt-1 text-sm text-gray-900'>{selectedSeller.balance}</p>
+                    </div>
+                    <div>
                       <h4 className='text-sm font-medium text-gray-500'>Email</h4>
                       <p className='mt-1 text-sm text-gray-900'>{selectedSeller.email || 'N/A'}</p>
                     </div>

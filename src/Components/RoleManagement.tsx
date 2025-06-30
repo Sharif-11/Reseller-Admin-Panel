@@ -669,98 +669,106 @@ const RoleManagement = () => {
       {/* Create Role Modal */}
       {showCreateModal && (
         <div className='fixed inset-0 z-50 overflow-y-auto'>
-          <div className='flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0'>
+          <div className='flex items-center justify-center min-h-screen p-2 sm:p-4'>
+            {/* Backdrop */}
             <div
               className='fixed inset-0 transition-opacity bg-black bg-opacity-50'
               aria-hidden='true'
               onClick={() => setShowCreateModal(false)}
             ></div>
 
-            <div className='inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all w-full max-w-3xl mx-4 sm:my-8 sm:align-middle sm:w-full'>
-              <div className='bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4'>
-                <div className='flex justify-between items-start'>
-                  <h3 className='text-lg leading-6 font-medium text-gray-900'>Create New Role</h3>
-                  <button
-                    onClick={() => setShowCreateModal(false)}
-                    className='text-gray-400 hover:text-gray-500 focus:outline-none'
-                  >
-                    <XMarkIcon className='h-6 w-6' />
-                  </button>
+            {/* Modal container */}
+            <div className='inline-block w-full max-w-md p-4 overflow-hidden text-left align-bottom transition-all transform bg-white rounded-lg shadow-xl sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full sm:p-6'>
+              {/* Header */}
+              <div className='flex items-center justify-between'>
+                <h3 className='text-lg font-medium leading-6 text-gray-900'>Create New Role</h3>
+                <button
+                  onClick={() => setShowCreateModal(false)}
+                  className='text-gray-400 rounded-md hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500'
+                >
+                  <span className='sr-only'>Close</span>
+                  <XMarkIcon className='w-6 h-6' />
+                </button>
+              </div>
+
+              {/* Form content */}
+              <div className='mt-4 space-y-4'>
+                {/* Role Name */}
+                <div>
+                  <label htmlFor='roleName' className='block text-sm font-medium text-gray-700'>
+                    Role Name*
+                  </label>
+                  <input
+                    type='text'
+                    id='roleName'
+                    className='block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'
+                    value={newRole.roleName}
+                    onChange={e => setNewRole({ ...newRole, roleName: e.target.value })}
+                    placeholder='Enter role name'
+                  />
                 </div>
 
-                <div className='mt-4 space-y-4'>
-                  <div>
-                    <label htmlFor='roleName' className='block text-sm font-medium text-gray-700'>
-                      Role Name*
-                    </label>
-                    <input
-                      type='text'
-                      id='roleName'
-                      className='mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm'
-                      value={newRole.roleName}
-                      onChange={e => setNewRole({ ...newRole, roleName: e.target.value })}
-                    />
-                  </div>
+                {/* Description */}
+                <div>
+                  <label htmlFor='description' className='block text-sm font-medium text-gray-700'>
+                    Description
+                  </label>
+                  <textarea
+                    id='description'
+                    rows={3}
+                    className='block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'
+                    value={newRole.description}
+                    onChange={e => setNewRole({ ...newRole, description: e.target.value })}
+                    placeholder='Enter role description'
+                  />
+                </div>
 
-                  <div>
-                    <label
-                      htmlFor='description'
-                      className='block text-sm font-medium text-gray-700'
-                    >
-                      Description
-                    </label>
-                    <textarea
-                      id='description'
-                      rows={3}
-                      className='mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm'
-                      value={newRole.description}
-                      onChange={e => setNewRole({ ...newRole, description: e.target.value })}
-                    />
-                  </div>
+                {/* Default Role checkbox */}
+                <div className='flex items-center'>
+                  <input
+                    id='isDefault'
+                    type='checkbox'
+                    className='w-4 h-4 border-gray-300 rounded text-indigo-600 focus:ring-indigo-500'
+                    checked={newRole.isDefault}
+                    onChange={e => setNewRole({ ...newRole, isDefault: e.target.checked })}
+                  />
+                  <label htmlFor='isDefault' className='block ml-2 text-sm text-gray-700'>
+                    Default Role
+                  </label>
+                </div>
 
-                  <div className='flex items-center'>
-                    <input
-                      id='isDefault'
-                      type='checkbox'
-                      className='h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500'
-                      checked={newRole.isDefault}
-                      onChange={e => setNewRole({ ...newRole, isDefault: e.target.checked })}
-                    />
-                    <label htmlFor='isDefault' className='ml-2 block text-sm text-gray-700'>
-                      Default Role
-                    </label>
-                  </div>
+                {/* Permissions section */}
+                <div className='mt-4'>
+                  <h4 className='mb-2 text-sm font-medium text-gray-700'>Permissions</h4>
+                  <div className='space-y-3'>
+                    {allPermissions.map(permission => {
+                      const isChecked = newRole.permissions.some(p => p.permission === permission)
+                      const rolePermission = newRole.permissions.find(
+                        p => p.permission === permission
+                      )
+                      const hasAllActions = rolePermission?.actions.includes('ALL')
 
-                  <div className='mt-4'>
-                    <h4 className='text-sm font-medium text-gray-700 mb-2'>Permissions</h4>
-                    <div className='space-y-3'>
-                      {allPermissions.map(permission => {
-                        const isChecked = newRole.permissions.some(p => p.permission === permission)
-                        const rolePermission = newRole.permissions.find(
-                          p => p.permission === permission
-                        )
-                        const hasAllActions = rolePermission?.actions.includes('ALL')
+                      return (
+                        <div key={permission} className='space-y-1'>
+                          <div className='flex items-center'>
+                            <input
+                              id={`new-${permission}`}
+                              type='checkbox'
+                              checked={isChecked}
+                              onChange={() => toggleCreatePermission(permission)}
+                              className='w-4 h-4 border-gray-300 rounded text-indigo-600 focus:ring-indigo-500'
+                            />
+                            <label
+                              htmlFor={`new-${permission}`}
+                              className='ml-2 text-sm text-gray-700 capitalize'
+                            >
+                              {permission.toLowerCase().replace(/_/g, ' ')}
+                            </label>
+                          </div>
 
-                        return (
-                          <div key={permission} className='space-y-1'>
-                            <div className='flex items-center'>
-                              <input
-                                id={`new-${permission}`}
-                                type='checkbox'
-                                checked={isChecked}
-                                onChange={() => toggleCreatePermission(permission)}
-                                className='h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500'
-                              />
-                              <label
-                                htmlFor={`new-${permission}`}
-                                className='ml-2 text-sm text-gray-700 capitalize'
-                              >
-                                {permission.toLowerCase().replace(/_/g, ' ')}
-                              </label>
-                            </div>
-
-                            {isChecked && rolePermission && (
-                              <div className='ml-6 flex flex-wrap gap-2'>
+                          {isChecked && rolePermission && (
+                            <div className='ml-6'>
+                              <div className='flex flex-wrap gap-2 mt-1'>
                                 {allActions.map(action => (
                                   <div key={action} className='flex items-center'>
                                     <input
@@ -770,7 +778,7 @@ const RoleManagement = () => {
                                         hasAllActions || rolePermission.actions.includes(action)
                                       }
                                       onChange={() => toggleCreateAction(permission, action)}
-                                      className={`h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 ${
+                                      className={`w-4 h-4 border-gray-300 rounded text-indigo-600 focus:ring-indigo-500 ${
                                         hasAllActions ? 'opacity-50 cursor-not-allowed' : ''
                                       }`}
                                       disabled={hasAllActions}
@@ -786,26 +794,28 @@ const RoleManagement = () => {
                                   </div>
                                 ))}
                               </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               </div>
-              <div className='bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse'>
+
+              {/* Footer buttons */}
+              <div className='mt-5 sm:mt-4 sm:flex sm:flex-row-reverse'>
                 <button
                   type='button'
                   onClick={handleCreateRole}
-                  className='w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm'
+                  className='inline-flex justify-center w-full px-4 py-2 text-base font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm'
                 >
                   Create Role
                 </button>
                 <button
                   type='button'
                   onClick={() => setShowCreateModal(false)}
-                  className='mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm'
+                  className='inline-flex justify-center w-full px-4 py-2 mt-3 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm'
                 >
                   Cancel
                 </button>
