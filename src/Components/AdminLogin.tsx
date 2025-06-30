@@ -6,6 +6,7 @@ import * as Yup from 'yup'
 import { authService } from '../Api/auth.api'
 import logo from '../assets/shopbd_logo.png'
 import { useAuth } from '../Hooks/useAuth'
+import Loading from './Loading'
 
 // Validation Schema for Login
 const loginValidationSchema = Yup.object({
@@ -38,8 +39,8 @@ const AdminLogin = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [loginError, setLoginError] = useState('')
-  const [hasSuperAdmin, setHasSuperAdmin] = useState(true) // Assume true initially
-  const setCreatingSuperAdmin = useState(false)[1]
+  const [hasSuperAdmin, setHasSuperAdmin] = useState<boolean | null>(null) // null means not checked yet
+  const [isCheckingAdmin, setIsCheckingAdmin] = useState(true)
 
   const { setUser } = useAuth()
   const navigate = useNavigate()
@@ -48,11 +49,14 @@ const AdminLogin = () => {
   useEffect(() => {
     const checkSuperAdmin = async () => {
       try {
+        setIsCheckingAdmin(true)
         const { success, data } = await authService.checkSuperAdminExists()
         setHasSuperAdmin(success && data?.exists)
       } catch (error) {
         console.error('Error checking super admin:', error)
         setHasSuperAdmin(true) // Fallback to login form
+      } finally {
+        setIsCheckingAdmin(false)
       }
     }
     checkSuperAdmin()
@@ -103,8 +107,17 @@ const AdminLogin = () => {
       })
 
       if (success) {
-        setHasSuperAdmin(true)
-        setCreatingSuperAdmin(false)
+        // After successful creation, automatically log the user in
+        const loginResponse = await authService.login({
+          phoneNo: values.phone,
+          password: values.password,
+        })
+
+        if (loginResponse.success && loginResponse.data?.token && loginResponse.data?.user) {
+          localStorage.setItem('token', loginResponse.data.token)
+          setUser(loginResponse.data.user)
+          navigate('/dashboard')
+        }
       } else {
         setLoginError(message || 'সুপার অ্যাডমিন তৈরি করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।')
       }
@@ -118,16 +131,25 @@ const AdminLogin = () => {
     }
   }
 
+  // Show loading state while checking for super admin
+  if (isCheckingAdmin) {
+    return (
+      <div className='flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100'>
+        <Loading />
+      </div>
+    )
+  }
+
   return (
-    <div className='min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4 py-8'>
-      <div className='w-full max-w-md'>
+    <div className='min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex  justify-center px-4 py-8'>
+      <div className='w-full max-w-md mx-4'>
         {/* Header */}
         <div className='text-center mb-8'>
           <div className='inline-block mb-6'>
             <img src={logo} alt='Logo' className='h-16 w-16 mx-auto rounded-full shadow-lg' />
           </div>
           <h1 className='text-2xl font-bold text-gray-900 mb-2'>
-            {hasSuperAdmin ? 'অ্যাডমিন প্যানেল' : 'সুপার অ্যাডমিন তৈরি করুন'}
+            {hasSuperAdmin ? 'অ্যাডমিন লগইন' : 'সুপার অ্যাডমিন তৈরি করুন'}
           </h1>
           <p className='text-gray-600'>
             {hasSuperAdmin
@@ -137,7 +159,7 @@ const AdminLogin = () => {
         </div>
 
         {/* Login Form or Super Admin Creation Form */}
-        <div className='bg-white rounded-2xl shadow-xl p-8'>
+        <div className='bg-white rounded-2xl shadow-xl p-6 sm:p-8'>
           {hasSuperAdmin ? (
             // Login Form
             <Formik
@@ -146,10 +168,13 @@ const AdminLogin = () => {
               onSubmit={handleLoginSubmit}
             >
               {({ errors, touched, handleSubmit }) => (
-                <form onSubmit={handleSubmit} className='space-y-6'>
+                <form onSubmit={handleSubmit} className='space-y-4 sm:space-y-6'>
                   {/* Phone Number Field */}
                   <div>
-                    <label htmlFor='phone' className='block text-sm font-medium text-gray-700 mb-2'>
+                    <label
+                      htmlFor='phone'
+                      className='block text-sm font-medium text-gray-700 mb-1 sm:mb-2'
+                    >
                       মোবাইল নম্বর
                     </label>
                     <div className='relative'>
@@ -161,7 +186,7 @@ const AdminLogin = () => {
                         name='phone'
                         type='tel'
                         placeholder='01712345678'
-                        className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+                        className={`w-full pl-10 pr-4 py-2 sm:py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
                           errors.phone && touched.phone
                             ? 'border-red-300 bg-red-50'
                             : 'border-gray-300 bg-white'
@@ -172,7 +197,7 @@ const AdminLogin = () => {
                     <ErrorMessage
                       name='phone'
                       component='div'
-                      className='mt-2 text-sm text-red-600 flex items-center'
+                      className='mt-1 text-sm text-red-600 flex items-center'
                     />
                   </div>
 
@@ -180,7 +205,7 @@ const AdminLogin = () => {
                   <div>
                     <label
                       htmlFor='password'
-                      className='block text-sm font-medium text-gray-700 mb-2'
+                      className='block text-sm font-medium text-gray-700 mb-1 sm:mb-2'
                     >
                       পাসওয়ার্ড
                     </label>
@@ -193,7 +218,7 @@ const AdminLogin = () => {
                         name='password'
                         type={showPassword ? 'text' : 'password'}
                         placeholder='আপনার পাসওয়ার্ড'
-                        className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+                        className={`w-full pl-10 pr-12 py-2 sm:py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
                           errors.password && touched.password
                             ? 'border-red-300 bg-red-50'
                             : 'border-gray-300 bg-white'
@@ -216,7 +241,7 @@ const AdminLogin = () => {
                     <ErrorMessage
                       name='password'
                       component='div'
-                      className='mt-2 text-sm text-red-600 flex items-center'
+                      className='mt-1 text-sm text-red-600 flex items-center'
                     />
                   </div>
 
@@ -234,7 +259,7 @@ const AdminLogin = () => {
 
                   {/* Login Error */}
                   {loginError && (
-                    <div className='bg-red-50 border border-red-200 rounded-lg p-4'>
+                    <div className='bg-red-50 border border-red-200 rounded-lg p-3'>
                       <div className='flex'>
                         <div className='text-sm text-red-800'>{loginError}</div>
                       </div>
@@ -245,7 +270,7 @@ const AdminLogin = () => {
                   <button
                     type='submit'
                     disabled={isLoading}
-                    className='w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+                    className='w-full flex justify-center items-center py-2 sm:py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
                   >
                     {isLoading ? (
                       <>
@@ -276,10 +301,13 @@ const AdminLogin = () => {
               onSubmit={handleSuperAdminSubmit}
             >
               {({ errors, touched, handleSubmit }) => (
-                <form onSubmit={handleSubmit} className='space-y-6'>
+                <form onSubmit={handleSubmit} className='space-y-4 sm:space-y-6'>
                   {/* Name Field */}
                   <div>
-                    <label htmlFor='name' className='block text-sm font-medium text-gray-700 mb-2'>
+                    <label
+                      htmlFor='name'
+                      className='block text-sm font-medium text-gray-700 mb-1 sm:mb-2'
+                    >
                       নাম
                     </label>
                     <div className='relative'>
@@ -291,7 +319,7 @@ const AdminLogin = () => {
                         name='name'
                         type='text'
                         placeholder='আপনার নাম'
-                        className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+                        className={`w-full pl-10 pr-4 py-2 sm:py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
                           errors.name && touched.name
                             ? 'border-red-300 bg-red-50'
                             : 'border-gray-300 bg-white'
@@ -302,13 +330,16 @@ const AdminLogin = () => {
                     <ErrorMessage
                       name='name'
                       component='div'
-                      className='mt-2 text-sm text-red-600 flex items-center'
+                      className='mt-1 text-sm text-red-600 flex items-center'
                     />
                   </div>
 
                   {/* Phone Number Field */}
                   <div>
-                    <label htmlFor='phone' className='block text-sm font-medium text-gray-700 mb-2'>
+                    <label
+                      htmlFor='phone'
+                      className='block text-sm font-medium text-gray-700 mb-1 sm:mb-2'
+                    >
                       মোবাইল নম্বর
                     </label>
                     <div className='relative'>
@@ -320,7 +351,7 @@ const AdminLogin = () => {
                         name='phone'
                         type='tel'
                         placeholder='01712345678'
-                        className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+                        className={`w-full pl-10 pr-4 py-2 sm:py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
                           errors.phone && touched.phone
                             ? 'border-red-300 bg-red-50'
                             : 'border-gray-300 bg-white'
@@ -331,13 +362,16 @@ const AdminLogin = () => {
                     <ErrorMessage
                       name='phone'
                       component='div'
-                      className='mt-2 text-sm text-red-600 flex items-center'
+                      className='mt-1 text-sm text-red-600 flex items-center'
                     />
                   </div>
 
                   {/* Email Field (Optional) */}
                   <div>
-                    <label htmlFor='email' className='block text-sm font-medium text-gray-700 mb-2'>
+                    <label
+                      htmlFor='email'
+                      className='block text-sm font-medium text-gray-700 mb-1 sm:mb-2'
+                    >
                       ইমেইল (ঐচ্ছিক)
                     </label>
                     <div className='relative'>
@@ -349,7 +383,7 @@ const AdminLogin = () => {
                         name='email'
                         type='email'
                         placeholder='আপনার ইমেইল'
-                        className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+                        className={`w-full pl-10 pr-4 py-2 sm:py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
                           errors.email && touched.email
                             ? 'border-red-300 bg-red-50'
                             : 'border-gray-300 bg-white'
@@ -360,7 +394,7 @@ const AdminLogin = () => {
                     <ErrorMessage
                       name='email'
                       component='div'
-                      className='mt-2 text-sm text-red-600 flex items-center'
+                      className='mt-1 text-sm text-red-600 flex items-center'
                     />
                   </div>
 
@@ -368,7 +402,7 @@ const AdminLogin = () => {
                   <div>
                     <label
                       htmlFor='password'
-                      className='block text-sm font-medium text-gray-700 mb-2'
+                      className='block text-sm font-medium text-gray-700 mb-1 sm:mb-2'
                     >
                       পাসওয়ার্ড
                     </label>
@@ -381,7 +415,7 @@ const AdminLogin = () => {
                         name='password'
                         type={showPassword ? 'text' : 'password'}
                         placeholder='পাসওয়ার্ড (৬-১৬ অক্ষর)'
-                        className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+                        className={`w-full pl-10 pr-12 py-2 sm:py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
                           errors.password && touched.password
                             ? 'border-red-300 bg-red-50'
                             : 'border-gray-300 bg-white'
@@ -404,7 +438,7 @@ const AdminLogin = () => {
                     <ErrorMessage
                       name='password'
                       component='div'
-                      className='mt-2 text-sm text-red-600 flex items-center'
+                      className='mt-1 text-sm text-red-600 flex items-center'
                     />
                   </div>
 
@@ -412,7 +446,7 @@ const AdminLogin = () => {
                   <div>
                     <label
                       htmlFor='confirmPassword'
-                      className='block text-sm font-medium text-gray-700 mb-2'
+                      className='block text-sm font-medium text-gray-700 mb-1 sm:mb-2'
                     >
                       পাসওয়ার্ড নিশ্চিত করুন
                     </label>
@@ -425,7 +459,7 @@ const AdminLogin = () => {
                         name='confirmPassword'
                         type={showConfirmPassword ? 'text' : 'password'}
                         placeholder='পাসওয়ার্ড নিশ্চিত করুন'
-                        className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+                        className={`w-full pl-10 pr-12 py-2 sm:py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
                           errors.confirmPassword && touched.confirmPassword
                             ? 'border-red-300 bg-red-50'
                             : 'border-gray-300 bg-white'
@@ -448,13 +482,13 @@ const AdminLogin = () => {
                     <ErrorMessage
                       name='confirmPassword'
                       component='div'
-                      className='mt-2 text-sm text-red-600 flex items-center'
+                      className='mt-1 text-sm text-red-600 flex items-center'
                     />
                   </div>
 
                   {/* Error Message */}
                   {loginError && (
-                    <div className='bg-red-50 border border-red-200 rounded-lg p-4'>
+                    <div className='bg-red-50 border border-red-200 rounded-lg p-3'>
                       <div className='flex'>
                         <div className='text-sm text-red-800'>{loginError}</div>
                       </div>
@@ -465,7 +499,7 @@ const AdminLogin = () => {
                   <button
                     type='submit'
                     disabled={isLoading}
-                    className='w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+                    className='w-full flex justify-center items-center py-2 sm:py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
                   >
                     {isLoading ? (
                       <>
@@ -486,8 +520,10 @@ const AdminLogin = () => {
         </div>
 
         {/* Footer */}
-        <div className='text-center mt-8'>
-          <p className='text-sm text-gray-500'>© ২০২৫ অ্যাডমিন প্যানেল। সকল অধিকার সংরক্ষিত।</p>
+        <div className='text-center mt-6'>
+          <p className='text-xs sm:text-sm text-gray-500'>
+            © ২০২৫ অ্যাডমিন প্যানেল। সকল অধিকার সংরক্ষিত।
+          </p>
         </div>
       </div>
     </div>

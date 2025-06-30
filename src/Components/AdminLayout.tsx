@@ -34,7 +34,7 @@ const AdminLayout = () => {
 
   return (
     <div className='min-h-screen bg-gray-50'>
-      <AdminHeader setIsSidebarOpen={setIsSidebarOpen} />
+      <AdminHeader setIsSidebarOpen={setIsSidebarOpen} isSidebarOpen={isSidebarOpen} />
 
       <div className='flex h-full'>
         {/* Sidebar */}
@@ -586,7 +586,7 @@ const AdminLayout = () => {
                     ঘোষণা ম্যানেজমেন্ট
                   </NavLink>
 
-                  <NavLink
+                  {/* <NavLink
                     to='/dashboard/notification-settings'
                     onClick={handleNavClick}
                     className={({ isActive }) =>
@@ -598,7 +598,7 @@ const AdminLayout = () => {
                     }
                   >
                     নোটিফিকেশন সেটিংস
-                  </NavLink>
+                  </NavLink> */}
                   <NavLink
                     to='/dashboard/change-password'
                     onClick={handleNavClick}

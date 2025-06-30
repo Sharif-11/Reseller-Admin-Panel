@@ -124,7 +124,7 @@ const AnnouncementManagement = () => {
               value={newAnnouncement}
               onChange={e => setNewAnnouncement(e.target.value)}
               placeholder='Enter new announcement (supports multiple lines)'
-              rows={3}
+              rows={5}
               className='block w-full px-3 py-2 rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'
             />
             <button

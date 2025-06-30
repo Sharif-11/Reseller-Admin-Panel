@@ -436,14 +436,14 @@ const CommissionTable = () => {
         <button
           onClick={addPriceRange}
           disabled={isSaving}
-          className='px-3 py-2 bg-indigo-600 text-white rounded-md text-sm flex items-center disabled:opacity-50'
+          className='px-3 py-2 bg-indigo-600 text-white rounded-md text-[8px] flex items-center disabled:opacity-50 md:text-sm'
         >
           <span className='mr-1'>+</span> Add Price Range
         </button>
         <button
           onClick={addLevel}
           disabled={isSaving}
-          className='px-3 py-2 bg-green-600 text-white rounded-md text-sm flex items-center disabled:opacity-50'
+          className='px-3 py-2 bg-green-600 text-white rounded-md text-[8px] flex items-center disabled:opacity-50 md:text-sm'
         >
           <span className='mr-1'>+</span> Add Level
         </button>
@@ -452,7 +452,7 @@ const CommissionTable = () => {
         <button
           onClick={saveChanges}
           disabled={isSaving}
-          className='px-3 py-2 bg-blue-600 text-white rounded-md text-sm flex items-center disabled:opacity-50 ml-auto'
+          className='px-3 py-2 bg-blue-600 text-white rounded-md text-[8px] flex items-center disabled:opacity-50 ml-auto md:text-sm'
         >
           {isSaving ? 'Saving...' : 'Save Changes'}
         </button>

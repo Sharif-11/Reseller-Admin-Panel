@@ -266,7 +266,7 @@ const AdminWithdrawRequests = () => {
       <div className='mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3'>
         <div className='flex border-b'>
           <button
-            className={`px-4 py-2 font-medium text-sm ${
+            className={`px-4 py-2 font-medium text-xs ${
               statusFilter === 'PENDING'
                 ? 'text-blue-600 border-b-2 border-blue-600'
                 : 'text-gray-500'
@@ -276,7 +276,7 @@ const AdminWithdrawRequests = () => {
             Pending
           </button>
           <button
-            className={`px-4 py-2 font-medium text-sm ${
+            className={`px-4 py-2 font-medium text-xs ${
               statusFilter === 'COMPLETED'
                 ? 'text-blue-600 border-b-2 border-blue-600'
                 : 'text-gray-500'
@@ -286,7 +286,7 @@ const AdminWithdrawRequests = () => {
             Completed
           </button>
           <button
-            className={`px-4 py-2 font-medium text-sm ${
+            className={`px-4 py-2 font-medium text-xs ${
               statusFilter === 'REJECTED'
                 ? 'text-blue-600 border-b-2 border-blue-600'
                 : 'text-gray-500'
@@ -297,12 +297,13 @@ const AdminWithdrawRequests = () => {
           </button>
         </div>
 
-        <div className='flex items-center gap-2'>
-          <div className='relative'>
+        <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-2'>
+          {/* Search Input - Full width on mobile, fixed width on desktop */}
+          <div className='relative w-full sm:w-64'>
             <input
               type='text'
               placeholder='Search by phone or transaction ID'
-              className='pl-8 pr-4 py-2 border rounded-md text-sm w-full md:w-64'
+              className='pl-8 pr-4 py-2 border rounded-md text-xs w-full'
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
             />
@@ -322,10 +323,11 @@ const AdminWithdrawRequests = () => {
             </svg>
           </div>
 
+          {/* Page Size Selector - Full width on mobile, auto width on desktop */}
           <select
             value={pagination.pageSize}
             onChange={handlePageSizeChange}
-            className='border rounded-md px-2 py-2 text-sm'
+            className='border rounded-md px-2 py-2 text-xs w-full sm:w-auto'
           >
             <option value='5'>5 per page</option>
             <option value='10'>10 per page</option>

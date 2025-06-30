@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { authService } from '../Api/auth.api'
@@ -6,12 +6,14 @@ import { useAuth } from '../Hooks/useAuth'
 import { loadingText } from '../utils/utils'
 
 const AdminHeader = ({
+  isSidebarOpen,
   setIsSidebarOpen,
 }: {
+  isSidebarOpen: boolean
   setIsSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const [notificationOpen, setNotificationOpen] = useState(false)
+  // const [notificationOpen, setNotificationOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
   const { user, setUser } = useAuth()
@@ -20,9 +22,9 @@ const AdminHeader = ({
     setIsDropdownOpen(!isDropdownOpen)
   }
 
-  const toggleNotifications = () => {
-    setNotificationOpen(!notificationOpen)
-  }
+  // const toggleNotifications = () => {
+  //   setNotificationOpen(!notificationOpen)
+  // }
 
   const handleLogout = async () => {
     setLoading(true)
@@ -34,6 +36,16 @@ const AdminHeader = ({
     }
     setLoading(false)
   }
+  useEffect(() => {
+    if (isDropdownOpen) {
+      setIsSidebarOpen(false)
+    }
+  }, [isDropdownOpen])
+  useEffect(() => {
+    if (isSidebarOpen) {
+      setIsDropdownOpen(false)
+    }
+  }, [isSidebarOpen])
 
   return (
     <header className='bg-gradient-to-r from-indigo-700 to-indigo-800 sticky top-0 z-50 shadow-lg'>
@@ -68,7 +80,7 @@ const AdminHeader = ({
           {/* Admin Navigation */}
           <div className='flex items-center space-x-4'>
             {/* Notifications */}
-            <div className='relative'>
+            {/* <div className='relative'>
               <button
                 onClick={toggleNotifications}
                 className='p-1 text-white hover:bg-indigo-600 rounded-full transition relative'
@@ -119,7 +131,7 @@ const AdminHeader = ({
                   </div>
                 </div>
               )}
-            </div>
+            </div> */}
 
             {/* User Dropdown */}
             <div className='relative'>
@@ -153,20 +165,26 @@ const AdminHeader = ({
                 <div className='absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg z-10 overflow-hidden'>
                   <div className='px-4 py-3 border-b border-gray-100'>
                     <p className='text-sm font-medium text-gray-900'>{user?.name || 'Admin'}</p>
-                    <p className='text-xs text-gray-500'>Admin Panel</p>
+                    <p className='text-xs text-gray-500'>{user?.role}</p>
                   </div>
                   <Link
                     to={'/dashboard/profile'}
                     className='block px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition'
                   >
-                    Profile
+                    প্রোফাইল
+                  </Link>
+                  <Link
+                    to={'/dashboard/change-password'}
+                    className='block px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition'
+                  >
+                    পাসওয়ার্ড পরিবর্তন
                   </Link>
 
                   <button
                     onClick={handleLogout}
                     className='block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition'
                   >
-                    {loading ? loadingText : 'Logout'}
+                    {loading ? loadingText : 'লগ আউট'}
                   </button>
                 </div>
               )}

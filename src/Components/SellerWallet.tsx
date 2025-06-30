@@ -32,6 +32,8 @@ const SellerWalletManagementPage = () => {
   const [deleteLoadingId, setDeleteLoadingId] = useState<number | null>(null)
   const [sellerPhoneNo, setSellerPhoneNo] = useState('')
   const [error, setError] = useState('')
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [walletToDelete, setWalletToDelete] = useState<number | null>(null)
 
   const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const digitsOnly = e.target.value.replace(/\D/g, '')
@@ -70,22 +72,29 @@ const SellerWalletManagementPage = () => {
     }
   }
 
-  const handleDeleteWallet = async (walletId: number) => {
-    if (!confirm('Are you sure you want to delete this wallet?')) return
+  const confirmDeleteWallet = (walletId: number) => {
+    setWalletToDelete(walletId)
+    setShowDeleteModal(true)
+  }
+
+  const handleDeleteWallet = async () => {
+    if (!walletToDelete) return
 
     try {
-      setDeleteLoadingId(walletId)
-      const response = await walletApiService.deleteWallet(walletId)
+      setDeleteLoadingId(walletToDelete)
+      const response = await walletApiService.deleteWallet(walletToDelete)
       if (response.success && sellerDetails) {
         setSellerDetails({
           ...sellerDetails,
-          Wallet: sellerDetails.Wallet.filter(wallet => wallet.walletId !== walletId),
+          Wallet: sellerDetails.Wallet.filter(wallet => wallet.walletId !== walletToDelete),
         })
       }
     } catch (err) {
       console.error('Failed to delete wallet:', err)
     } finally {
       setDeleteLoadingId(null)
+      setShowDeleteModal(false)
+      setWalletToDelete(null)
     }
   }
 
@@ -160,9 +169,9 @@ const SellerWalletManagementPage = () => {
                   <div className='bg-indigo-100 p-3 rounded-lg mr-4'>
                     <FaUser className='text-indigo-600' />
                   </div>
-                  <div>
+                  <div className='min-w-0'>
                     <h3 className='text-sm font-medium text-gray-500'>Name</h3>
-                    <p className='text-gray-900'>{sellerDetails.name}</p>
+                    <p className='text-gray-900 truncate'>{sellerDetails.name}</p>
                   </div>
                 </div>
 
@@ -170,9 +179,9 @@ const SellerWalletManagementPage = () => {
                   <div className='bg-indigo-100 p-3 rounded-lg mr-4'>
                     <FaPhoneAlt className='text-indigo-600' />
                   </div>
-                  <div>
+                  <div className='min-w-0'>
                     <h3 className='text-sm font-medium text-gray-500'>Phone</h3>
-                    <p className='text-gray-900'>{sellerDetails.phoneNo}</p>
+                    <p className='text-gray-900 truncate'>{sellerDetails.phoneNo}</p>
                   </div>
                 </div>
 
@@ -181,9 +190,9 @@ const SellerWalletManagementPage = () => {
                     <div className='bg-indigo-100 p-3 rounded-lg mr-4'>
                       <FaEnvelope className='text-indigo-600' />
                     </div>
-                    <div>
+                    <div className='min-w-0'>
                       <h3 className='text-sm font-medium text-gray-500'>Email</h3>
-                      <p className='text-gray-900'>{sellerDetails.email}</p>
+                      <p className='text-gray-900 break-all'>{sellerDetails.email}</p>
                     </div>
                   </div>
                 )}
@@ -192,9 +201,9 @@ const SellerWalletManagementPage = () => {
                   <div className='bg-indigo-100 p-3 rounded-lg mr-4'>
                     <FaShopify className='text-indigo-600' />
                   </div>
-                  <div>
+                  <div className='min-w-0'>
                     <h3 className='text-sm font-medium text-gray-500'>Shop Name</h3>
-                    <p className='text-gray-900'>{sellerDetails.shopName}</p>
+                    <p className='text-gray-900 truncate'>{sellerDetails.shopName}</p>
                   </div>
                 </div>
 
@@ -202,9 +211,9 @@ const SellerWalletManagementPage = () => {
                   <div className='bg-indigo-100 p-3 rounded-lg mr-4'>
                     <FaPhoneAlt className='text-indigo-600' />
                   </div>
-                  <div>
+                  <div className='min-w-0'>
                     <h3 className='text-sm font-medium text-gray-500'>Nominee Phone</h3>
-                    <p className='text-gray-900'>{sellerDetails.nomineePhone}</p>
+                    <p className='text-gray-900 truncate'>{sellerDetails.nomineePhone}</p>
                   </div>
                 </div>
 
@@ -212,7 +221,7 @@ const SellerWalletManagementPage = () => {
                   <div className='bg-indigo-100 p-3 rounded-lg mr-4'>
                     <FaMoneyBillWave className='text-indigo-600' />
                   </div>
-                  <div>
+                  <div className='min-w-0'>
                     <h3 className='text-sm font-medium text-gray-500'>Balance</h3>
                     <p className='text-gray-900'>{sellerDetails.balance} BDT</p>
                   </div>
@@ -222,9 +231,9 @@ const SellerWalletManagementPage = () => {
                   <div className='bg-indigo-100 p-3 rounded-lg mr-4'>
                     <FaMapMarkerAlt className='text-indigo-600' />
                   </div>
-                  <div>
+                  <div className='min-w-0'>
                     <h3 className='text-sm font-medium text-gray-500'>Address</h3>
-                    <p className='text-gray-900'>
+                    <p className='text-gray-900 break-words'>
                       {sellerDetails.upazilla}, {sellerDetails.zilla}
                       <br />
                       {sellerDetails.address}
@@ -255,32 +264,28 @@ const SellerWalletManagementPage = () => {
                       key={wallet.walletId}
                       className='bg-gray-50 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4'
                     >
-                      <div className='flex items-center gap-4'>
+                      <div className='flex items-center gap-4 min-w-0'>
                         <div className='bg-indigo-100 p-3 rounded-lg'>
                           <FaWallet className='text-indigo-600' />
                         </div>
-                        <div>
-                          <h3 className='font-medium text-gray-900'>{wallet.walletName}</h3>
-                          <p className='text-sm text-gray-600 flex items-center'>
-                            <FaPhoneAlt className='mr-2' />
-                            {wallet.walletPhoneNo}
+                        <div className='min-w-0'>
+                          <h3 className='font-medium text-gray-900 truncate'>
+                            {wallet.walletName}
+                          </h3>
+                          <p className='text-sm text-gray-600 flex items-center truncate'>
+                            <FaPhoneAlt className='mr-2 flex-shrink-0' />
+                            <span className='truncate'>{wallet.walletPhoneNo}</span>
                           </p>
                         </div>
                       </div>
 
                       <button
-                        onClick={() => handleDeleteWallet(wallet.walletId)}
+                        onClick={() => confirmDeleteWallet(wallet.walletId)}
                         disabled={deleteLoadingId === wallet.walletId}
                         className='flex items-center justify-center bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed sm:self-end'
                       >
-                        {deleteLoadingId === wallet.walletId ? (
-                          <div className='h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2'></div>
-                        ) : (
-                          <>
-                            <FaTrash className='mr-2' />
-                            Delete
-                          </>
-                        )}
+                        <FaTrash className='mr-2' />
+                        Delete
                       </button>
                     </div>
                   ))}
@@ -298,6 +303,59 @@ const SellerWalletManagementPage = () => {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50'>
+          <div className='bg-white rounded-lg w-full max-w-md mx-auto p-6'>
+            <h3 className='text-lg font-medium text-gray-900 mb-4'>Confirm Deletion</h3>
+            <p className='text-gray-600 mb-6'>
+              Are you sure you want to delete this wallet? This action cannot be undone.
+            </p>
+            <div className='flex justify-end space-x-3'>
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className='px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50'
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteWallet}
+                disabled={deleteLoadingId !== null}
+                className='px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-70'
+              >
+                {deleteLoadingId ? (
+                  <span className='flex items-center'>
+                    <svg
+                      className='animate-spin -ml-1 mr-2 h-4 w-4 text-white'
+                      xmlns='http://www.w3.org/2000/svg'
+                      fill='none'
+                      viewBox='0 0 24 24'
+                    >
+                      <circle
+                        className='opacity-25'
+                        cx='12'
+                        cy='12'
+                        r='10'
+                        stroke='currentColor'
+                        strokeWidth='4'
+                      ></circle>
+                      <path
+                        className='opacity-75'
+                        fill='currentColor'
+                        d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
+                      ></path>
+                    </svg>
+                    Deleting...
+                  </span>
+                ) : (
+                  'Delete'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
