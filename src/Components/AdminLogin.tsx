@@ -39,7 +39,7 @@ const AdminLogin = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [loginError, setLoginError] = useState('')
-  const [hasSuperAdmin, setHasSuperAdmin] = useState<boolean | null>(null) // null means not checked yet
+  const [hasSuperAdmin, setHasSuperAdmin] = useState<boolean | null>(true) // null means not checked yet
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true)
 
   const { setUser } = useAuth()
@@ -51,7 +51,9 @@ const AdminLogin = () => {
       try {
         setIsCheckingAdmin(true)
         const { success, data } = await authService.checkSuperAdminExists()
-        setHasSuperAdmin(success && data?.exists)
+        if (success && !data?.exists) {
+          setHasSuperAdmin(false)
+        }
       } catch (error) {
         console.error('Error checking super admin:', error)
         setHasSuperAdmin(true) // Fallback to login form
