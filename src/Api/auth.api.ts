@@ -39,7 +39,11 @@ class AuthService {
   async profile(): Promise<ApiResponse<User>> {
     return apiClient.get<User>('auth/profile')
   }
-  async updateProfile(data: { name: string; email: string }): Promise<ApiResponse<User>> {
+  async updateProfile(data: {
+    name?: string
+    email?: string | null
+    phoneNo?: string
+  }): Promise<ApiResponse<User>> {
     return apiClient.patch<User>('auth/profile', data)
   }
   async checkSuperAdminExists() {
