@@ -55,8 +55,9 @@ const AdminLogin = () => {
             setUser(result.data || null)
             //please navigate to the route from where the user came
             // If user is already logged in, redirect to dashboard
+            const from = (location.state as any)?.from || '/dashboard'
 
-            navigate('/dashboard')
+            navigate(from)
           }
         } catch (error) {
           console.error('Login verification failed:', error)
