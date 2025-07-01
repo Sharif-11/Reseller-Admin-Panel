@@ -55,7 +55,6 @@ const AdminLogin = () => {
             setUser(result.data || null)
             //please navigate to the route from where the user came
             // If user is already logged in, redirect to dashboard
-            alert(JSON.stringify(location, null, 2))
 
             navigate('/dashboard')
           }

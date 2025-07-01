@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import {
   FaEnvelope,
+  FaInfoCircle,
   FaMapMarkerAlt,
   FaMoneyBillWave,
   FaPhoneAlt,
@@ -34,6 +35,7 @@ const SellerWalletManagementPage = () => {
   const [error, setError] = useState('')
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [walletToDelete, setWalletToDelete] = useState<number | null>(null)
+  const [showInstructions, setShowInstructions] = useState(true)
 
   const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const digitsOnly = e.target.value.replace(/\D/g, '')
@@ -43,17 +45,18 @@ const SellerWalletManagementPage = () => {
 
   const fetchSellerWallets = async () => {
     if (!sellerPhoneNo) {
-      setError('Phone number is required')
+      setError('ফোন নম্বর প্রয়োজন')
       return
     }
 
     if (!/^01[3-9]\d{8}$/.test(sellerPhoneNo)) {
-      setError('Invalid Bangladeshi phone number')
+      setError('সঠিক বাংলাদেশী ফোন নম্বর দিন')
       return
     }
 
     setLoading(true)
     setError('')
+    setShowInstructions(false)
     try {
       const response = await walletApiService.getSellerWalletsByPhone(sellerPhoneNo)
 
@@ -61,11 +64,11 @@ const SellerWalletManagementPage = () => {
         setSellerDetails(response.data)
       } else {
         setSellerDetails(null)
-        setError(response.message || 'No seller found with this phone number')
+        setError(response.message || 'এই ফোন নম্বর দিয়ে কোন বিক্রেতা পাওয়া যায়নি')
       }
     } catch (err) {
-      console.error('Failed to fetch seller details:', err)
-      setError('Failed to fetch seller details. Please try again.')
+      console.error('বিক্রেতার তথ্য আনতে ব্যর্থ:', err)
+      setError('বিক্রেতার তথ্য আনতে সমস্যা হয়েছে। আবার চেষ্টা করুন।')
       setSellerDetails(null)
     } finally {
       setLoading(false)
@@ -90,7 +93,7 @@ const SellerWalletManagementPage = () => {
         })
       }
     } catch (err) {
-      console.error('Failed to delete wallet:', err)
+      console.error('ওয়ালেট মুছতে ব্যর্থ:', err)
     } finally {
       setDeleteLoadingId(null)
       setShowDeleteModal(false)
@@ -105,18 +108,36 @@ const SellerWalletManagementPage = () => {
         <div className='flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4'>
           <div className='flex items-center'>
             <FaWallet className='text-indigo-600 text-2xl mr-3' />
-            <h1 className='text-2xl font-bold text-gray-800'>Seller Wallet Management</h1>
+            <h1 className='text-2xl font-bold text-gray-800'>সেলার ওয়ালেট ম্যানেজমেন্ট</h1>
           </div>
         </div>
 
+        {/* Admin Instructions */}
+        {showInstructions && (
+          <div className='bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6'>
+            <div className='flex items-start'>
+              <FaInfoCircle className='text-blue-500 mt-1 mr-3 flex-shrink-0' />
+              <div>
+                <h3 className='font-medium text-blue-800 mb-2'>ব্যবহারের নির্দেশনা</h3>
+                <ol className='list-decimal list-inside text-sm text-blue-700 space-y-1'>
+                  <li>বিক্রেতার ফোন নম্বর দিয়ে খুঁজুন (যে ফোন নম্বর দিয়ে রেজিস্ট্রেশন করা)</li>
+                  <li>বিক্রেতার প্রোফাইল তথ্য দেখুন (নাম, দোকানের নাম, ঠিকানা ইত্যাদি)</li>
+                  <li>বিক্রেতাকে তার ব্যক্তিগত তথ্য জিজ্ঞাসা করে মালিকানা যাচাই করুন</li>
+                  <li>যাচাই সম্পন্ন হলে সংশ্লিষ্ট ওয়ালেট ডিলিট করুন</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Search Section */}
         <div className='bg-white rounded-xl shadow-sm p-6 mb-8'>
-          <h2 className='text-lg font-semibold text-gray-800 mb-4'>Find Seller</h2>
+          <h2 className='text-lg font-semibold text-gray-800 mb-4'>বিক্রেতা খুঁজুন</h2>
 
           <div className='flex flex-col md:flex-row gap-4 mb-4'>
             <div className='flex-1'>
               <label className='block text-sm font-medium text-gray-700 mb-1'>
-                Seller Phone Number
+                বিক্রেতার ফোন নম্বর
               </label>
               <div className='relative'>
                 <div className='absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none'>
@@ -145,7 +166,7 @@ const SellerWalletManagementPage = () => {
                 ) : (
                   <FaSearch className='mr-2' />
                 )}
-                Find Seller
+                খুঁজুন
               </button>
             </div>
           </div>
@@ -162,7 +183,7 @@ const SellerWalletManagementPage = () => {
           <div className='space-y-6'>
             {/* Seller Information Card */}
             <div className='bg-white rounded-xl shadow-sm p-6'>
-              <h2 className='text-lg font-semibold text-gray-800 mb-4'>Seller Information</h2>
+              <h2 className='text-lg font-semibold text-gray-800 mb-4'>বিক্রেতার তথ্য</h2>
 
               <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                 <div className='flex items-start'>
@@ -170,7 +191,7 @@ const SellerWalletManagementPage = () => {
                     <FaUser className='text-indigo-600' />
                   </div>
                   <div className='min-w-0'>
-                    <h3 className='text-sm font-medium text-gray-500'>Name</h3>
+                    <h3 className='text-sm font-medium text-gray-500'>নাম</h3>
                     <p className='text-gray-900 truncate'>{sellerDetails.name}</p>
                   </div>
                 </div>
@@ -180,7 +201,7 @@ const SellerWalletManagementPage = () => {
                     <FaPhoneAlt className='text-indigo-600' />
                   </div>
                   <div className='min-w-0'>
-                    <h3 className='text-sm font-medium text-gray-500'>Phone</h3>
+                    <h3 className='text-sm font-medium text-gray-500'>ফোন</h3>
                     <p className='text-gray-900 truncate'>{sellerDetails.phoneNo}</p>
                   </div>
                 </div>
@@ -191,7 +212,7 @@ const SellerWalletManagementPage = () => {
                       <FaEnvelope className='text-indigo-600' />
                     </div>
                     <div className='min-w-0'>
-                      <h3 className='text-sm font-medium text-gray-500'>Email</h3>
+                      <h3 className='text-sm font-medium text-gray-500'>ইমেইল</h3>
                       <p className='text-gray-900 break-all'>{sellerDetails.email}</p>
                     </div>
                   </div>
@@ -202,7 +223,7 @@ const SellerWalletManagementPage = () => {
                     <FaShopify className='text-indigo-600' />
                   </div>
                   <div className='min-w-0'>
-                    <h3 className='text-sm font-medium text-gray-500'>Shop Name</h3>
+                    <h3 className='text-sm font-medium text-gray-500'>দোকানের নাম</h3>
                     <p className='text-gray-900 truncate'>{sellerDetails.shopName}</p>
                   </div>
                 </div>
@@ -212,7 +233,7 @@ const SellerWalletManagementPage = () => {
                     <FaPhoneAlt className='text-indigo-600' />
                   </div>
                   <div className='min-w-0'>
-                    <h3 className='text-sm font-medium text-gray-500'>Nominee Phone</h3>
+                    <h3 className='text-sm font-medium text-gray-500'>নমিনির ফোন</h3>
                     <p className='text-gray-900 truncate'>{sellerDetails.nomineePhone}</p>
                   </div>
                 </div>
@@ -222,8 +243,8 @@ const SellerWalletManagementPage = () => {
                     <FaMoneyBillWave className='text-indigo-600' />
                   </div>
                   <div className='min-w-0'>
-                    <h3 className='text-sm font-medium text-gray-500'>Balance</h3>
-                    <p className='text-gray-900'>{sellerDetails.balance} BDT</p>
+                    <h3 className='text-sm font-medium text-gray-500'>ব্যালেন্স</h3>
+                    <p className='text-gray-900'>{sellerDetails.balance} টাকা</p>
                   </div>
                 </div>
 
@@ -232,7 +253,7 @@ const SellerWalletManagementPage = () => {
                     <FaMapMarkerAlt className='text-indigo-600' />
                   </div>
                   <div className='min-w-0'>
-                    <h3 className='text-sm font-medium text-gray-500'>Address</h3>
+                    <h3 className='text-sm font-medium text-gray-500'>ঠিকানা</h3>
                     <p className='text-gray-900 break-words'>
                       {sellerDetails.upazilla}, {sellerDetails.zilla}
                       <br />
@@ -246,17 +267,14 @@ const SellerWalletManagementPage = () => {
             {/* Wallets Section */}
             <div className='bg-white rounded-xl shadow-sm p-6'>
               <div className='flex justify-between items-center mb-4'>
-                <h2 className='text-lg font-semibold text-gray-800'>Wallet Information</h2>
+                <h2 className='text-lg font-semibold text-gray-800'>ওয়ালেট তথ্য</h2>
                 <span className='text-sm text-gray-500'>
-                  {sellerDetails.Wallet.length}{' '}
-                  {sellerDetails.Wallet.length === 1 ? 'wallet' : 'wallets'}
+                  {sellerDetails.Wallet.length} টি ওয়ালেট
                 </span>
               </div>
 
               {sellerDetails.Wallet.length === 0 ? (
-                <div className='text-center py-8 text-gray-500'>
-                  No wallets found for this seller
-                </div>
+                <div className='text-center py-8 text-gray-500'>এই বিক্রেতার কোন ওয়ালেট নেই</div>
               ) : (
                 <div className='space-y-4'>
                   {sellerDetails.Wallet.map(wallet => (
@@ -284,8 +302,12 @@ const SellerWalletManagementPage = () => {
                         disabled={deleteLoadingId === wallet.walletId}
                         className='flex items-center justify-center bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed sm:self-end'
                       >
-                        <FaTrash className='mr-2' />
-                        Delete
+                        {deleteLoadingId === wallet.walletId ? (
+                          <div className='h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2'></div>
+                        ) : (
+                          <FaTrash className='mr-2' />
+                        )}
+                        মুছুন
                       </button>
                     </div>
                   ))}
@@ -297,8 +319,8 @@ const SellerWalletManagementPage = () => {
           <div className='bg-white rounded-xl shadow-sm p-8 text-center'>
             <p className='text-gray-500'>
               {sellerPhoneNo
-                ? 'No seller found with this phone number'
-                : 'Enter seller phone number to find their details'}
+                ? 'এই ফোন নম্বর দিয়ে কোন বিক্রেতা পাওয়া যায়নি'
+                : 'বিক্রেতার ফোন নম্বর দিন'}
             </p>
           </div>
         )}
@@ -308,16 +330,16 @@ const SellerWalletManagementPage = () => {
       {showDeleteModal && (
         <div className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50'>
           <div className='bg-white rounded-lg w-full max-w-md mx-auto p-6'>
-            <h3 className='text-lg font-medium text-gray-900 mb-4'>Confirm Deletion</h3>
+            <h3 className='text-lg font-medium text-gray-900 mb-4'>ওয়ালেট মুছুন</h3>
             <p className='text-gray-600 mb-6'>
-              Are you sure you want to delete this wallet? This action cannot be undone.
+              আপনি কি নিশ্চিত যে আপনি এই ওয়ালেটটি মুছতে চান? এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।
             </p>
             <div className='flex justify-end space-x-3'>
               <button
                 onClick={() => setShowDeleteModal(false)}
                 className='px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50'
               >
-                Cancel
+                বাতিল
               </button>
               <button
                 onClick={handleDeleteWallet}
@@ -346,10 +368,10 @@ const SellerWalletManagementPage = () => {
                         d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
                       ></path>
                     </svg>
-                    Deleting...
+                    মুছছে...
                   </span>
                 ) : (
-                  'Delete'
+                  'মুছুন'
                 )}
               </button>
             </div>

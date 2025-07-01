@@ -5,7 +5,7 @@ export interface Wallet {
   walletName: string
   walletPhoneNo: string
   walletType: 'SELLER' | 'SYSTEM'
-  balance: number
+  isActive: boolean
   isVerified: boolean
   createdAt: Date
   updatedAt: Date
@@ -71,8 +71,7 @@ class WalletApiService {
   async updateWallet(
     walletId: number,
     data: {
-      walletName?: string
-      walletPhoneNo?: string
+      isActive?: boolean
     }
   ): Promise<ApiResponse<Wallet>> {
     return apiClient.patch<Wallet>(`/wallets/${walletId}`, data)

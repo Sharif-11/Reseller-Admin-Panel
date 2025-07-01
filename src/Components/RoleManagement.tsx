@@ -10,6 +10,18 @@ import { useEffect, useState } from 'react'
 import { roleApiService } from '../Api/role.api'
 import type { ActionType, PermissionType } from '../Api/user.api'
 
+// Define action constants
+const STANDARD_ACTIONS: ActionType[] = [
+  'CREATE',
+  'READ',
+  'UPDATE',
+  'DELETE',
+  'APPROVE',
+  'REJECT',
+  'BLOCK',
+]
+const ALL_ACTIONS: ActionType[] = [...STANDARD_ACTIONS, 'NOTIFY']
+
 interface Role {
   roleId: string
   roleName: string
@@ -38,7 +50,6 @@ const RoleManagement = () => {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [allPermissions, setAllPermissions] = useState<PermissionType[]>([])
-  const [allActions, setAllActions] = useState<ActionType[]>([])
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newRole, setNewRole] = useState({
     roleName: '',
@@ -63,14 +74,21 @@ const RoleManagement = () => {
     }[],
   })
 
+  // Helper function to check if action is included
+  const hasAction = (actions: ActionType[], action: ActionType) => {
+    if (actions.includes('ALL')) {
+      return STANDARD_ACTIONS.includes(action)
+    }
+    return actions.includes(action)
+  }
+
   // Fetch all data
   const fetchData = async () => {
     setIsLoading(true)
     try {
-      const [rolesRes, permissionsRes, actionsRes] = await Promise.all([
+      const [rolesRes, permissionsRes] = await Promise.all([
         roleApiService.getAllRoles(),
         roleApiService.getAllPermissions(),
-        roleApiService.getAllActions(),
       ])
 
       if (rolesRes.success && rolesRes.data) {
@@ -79,9 +97,6 @@ const RoleManagement = () => {
       }
       if (permissionsRes.success && permissionsRes.data) {
         setAllPermissions(permissionsRes.data)
-      }
-      if (actionsRes.success && actionsRes.data) {
-        setAllActions(actionsRes.data)
       }
     } catch (err) {
       setError('Failed to load data')
@@ -155,7 +170,7 @@ const RoleManagement = () => {
                 role.permissions.find(rp => rp.permission === p.permission)?.rolePermissionId ||
                 `temp-${Date.now()}`,
               permission: p.permission,
-              actions: p.actions.includes('ALL') ? ['ALL'] : p.actions,
+              actions: p.actions,
             })),
           }
         })
@@ -170,22 +185,16 @@ const RoleManagement = () => {
                 role.permissions.find(rp => rp.permission === p.permission)?.rolePermissionId ||
                 `temp-${Date.now()}`,
               permission: p.permission,
-              actions: p.actions.includes('ALL') ? ['ALL'] : p.actions,
+              actions: p.actions,
             })),
           }
         })
       )
 
-      // Prepare permissions for API call
-      const permissionsToUpdate = permissions.map(p => ({
-        permission: p.permission,
-        actions: p.actions,
-      }))
-
       // API call
       const response = await roleApiService.updateRolePermissions(
         roleId,
-        permissionsToUpdate as {
+        permissions as {
           permission: PermissionType
           actions: ActionType[]
         }[]
@@ -234,10 +243,11 @@ const RoleManagement = () => {
       if (action === 'ALL') {
         updatedPermissions[permissionIndex] = {
           ...updatedPermissions[permissionIndex],
-          actions: currentActions.includes('ALL') ? [] : ['ALL'],
+          actions: currentActions.includes('ALL') ? [] : [...STANDARD_ACTIONS],
         }
       } else if (currentActions.includes('ALL')) {
-        return prev // Can't modify individual actions when ALL is selected
+        // Don't allow modifying individual actions when ALL is selected
+        return prev
       } else {
         updatedPermissions[permissionIndex] = {
           ...updatedPermissions[permissionIndex],
@@ -308,16 +318,25 @@ const RoleManagement = () => {
   const toggleCreateAction = (permission: PermissionType, action: ActionType) => {
     setNewRole(prev => ({
       ...prev,
-      permissions: prev.permissions.map(p =>
-        p.permission === permission
-          ? {
-              ...p,
-              actions: p.actions.includes(action)
-                ? p.actions.filter(a => a !== action)
-                : [...p.actions, action],
-            }
-          : p
-      ),
+      permissions: prev.permissions.map(p => {
+        if (p.permission !== permission) return p
+
+        if (action === 'ALL') {
+          return {
+            ...p,
+            actions: p.actions.includes('ALL') ? [] : [...STANDARD_ACTIONS],
+          }
+        } else if (p.actions.includes('ALL')) {
+          return p
+        } else {
+          return {
+            ...p,
+            actions: p.actions.includes(action)
+              ? p.actions.filter(a => a !== action)
+              : [...p.actions, action],
+          }
+        }
+      }),
     }))
   }
 
@@ -482,24 +501,25 @@ const RoleManagement = () => {
 
                         {isChecked && (
                           <div className='ml-6 flex flex-wrap gap-2'>
-                            {allActions.map(action => (
+                            {ALL_ACTIONS.map(action => (
                               <div key={action} className='flex items-center'>
                                 <input
                                   id={`${role.roleId}-${permission}-${action}`}
                                   type='checkbox'
-                                  checked={
-                                    hasAllActions ||
-                                    (rolePermission?.actions.includes(action) ?? false)
-                                  }
+                                  checked={hasAction(rolePermission?.actions || [], action)}
                                   className={`h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 ${
-                                    hasAllActions ? 'opacity-50 cursor-not-allowed' : ''
+                                    hasAllActions && STANDARD_ACTIONS.includes(action)
+                                      ? 'opacity-50 cursor-not-allowed'
+                                      : ''
                                   }`}
                                   readOnly
                                 />
                                 <label
                                   htmlFor={`${role.roleId}-${permission}-${action}`}
                                   className={`ml-1 text-xs text-gray-600 capitalize ${
-                                    hasAllActions ? 'opacity-50' : ''
+                                    hasAllActions && STANDARD_ACTIONS.includes(action)
+                                      ? 'opacity-50'
+                                      : ''
                                   }`}
                                 >
                                   {action.toLowerCase()}
@@ -609,24 +629,25 @@ const RoleManagement = () => {
                               </label>
                               {isChecked && (
                                 <div className='mt-1 flex flex-wrap gap-1'>
-                                  {allActions.map(action => (
+                                  {ALL_ACTIONS.map(action => (
                                     <div key={action} className='flex items-center'>
                                       <input
                                         id={`${role.roleId}-${permission}-${action}`}
                                         type='checkbox'
-                                        checked={
-                                          hasAllActions ||
-                                          (rolePermission?.actions.includes(action) ?? false)
-                                        }
+                                        checked={hasAction(rolePermission?.actions || [], action)}
                                         className={`h-3 w-3 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 ${
-                                          hasAllActions ? 'opacity-50 cursor-not-allowed' : ''
+                                          hasAllActions && STANDARD_ACTIONS.includes(action)
+                                            ? 'opacity-50 cursor-not-allowed'
+                                            : ''
                                         }`}
                                         readOnly
                                       />
                                       <label
                                         htmlFor={`${role.roleId}-${permission}-${action}`}
                                         className={`ml-1 text-xs text-gray-600 capitalize ${
-                                          hasAllActions ? 'opacity-50' : ''
+                                          hasAllActions && STANDARD_ACTIONS.includes(action)
+                                            ? 'opacity-50'
+                                            : ''
                                         }`}
                                       >
                                         {action.toLowerCase()}
@@ -769,24 +790,30 @@ const RoleManagement = () => {
                           {isChecked && rolePermission && (
                             <div className='ml-6'>
                               <div className='flex flex-wrap gap-2 mt-1'>
-                                {allActions.map(action => (
+                                {ALL_ACTIONS.map(action => (
                                   <div key={action} className='flex items-center'>
                                     <input
                                       id={`new-${permission}-${action}`}
                                       type='checkbox'
                                       checked={
-                                        hasAllActions || rolePermission.actions.includes(action)
+                                        action === 'ALL'
+                                          ? rolePermission.actions.includes('ALL')
+                                          : hasAction(rolePermission.actions, action)
                                       }
                                       onChange={() => toggleCreateAction(permission, action)}
                                       className={`w-4 h-4 border-gray-300 rounded text-indigo-600 focus:ring-indigo-500 ${
-                                        hasAllActions ? 'opacity-50 cursor-not-allowed' : ''
+                                        hasAllActions && STANDARD_ACTIONS.includes(action)
+                                          ? 'opacity-50 cursor-not-allowed'
+                                          : ''
                                       }`}
-                                      disabled={hasAllActions}
+                                      disabled={hasAllActions && STANDARD_ACTIONS.includes(action)}
                                     />
                                     <label
                                       htmlFor={`new-${permission}-${action}`}
                                       className={`ml-1 text-xs text-gray-600 capitalize ${
-                                        hasAllActions ? 'opacity-50' : ''
+                                        hasAllActions && STANDARD_ACTIONS.includes(action)
+                                          ? 'opacity-50'
+                                          : ''
                                       }`}
                                     >
                                       {action.toLowerCase()}
@@ -925,25 +952,36 @@ const RoleManagement = () => {
 
                               {isChecked && (
                                 <div className='ml-6 flex flex-wrap gap-2'>
-                                  {allActions.map(action => (
+                                  {ALL_ACTIONS.map(action => (
                                     <div key={action} className='flex items-center'>
                                       <input
                                         id={`update-${permission}-${action}`}
                                         type='checkbox'
                                         checked={
-                                          hasAllActions ||
-                                          (rolePermission?.actions.includes(action) ?? false)
+                                          action === 'ALL'
+                                            ? rolePermission?.actions.includes('ALL') || false
+                                            : hasAction(rolePermission?.actions || [], action)
                                         }
                                         onChange={() => toggleUpdateAction(permission, action)}
                                         className={`h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 ${
-                                          hasAllActions ? 'opacity-50 cursor-not-allowed' : ''
+                                          hasAllActions && STANDARD_ACTIONS.includes(action)
+                                            ? 'opacity-50 cursor-not-allowed'
+                                            : ''
                                         }`}
-                                        disabled={hasAllActions && action !== 'ALL'}
+                                        disabled={
+                                          hasAllActions &&
+                                          action !== 'ALL' &&
+                                          STANDARD_ACTIONS.includes(action)
+                                        }
                                       />
                                       <label
                                         htmlFor={`update-${permission}-${action}`}
                                         className={`ml-1 text-xs text-gray-600 capitalize ${
-                                          hasAllActions && action !== 'ALL' ? 'opacity-50' : ''
+                                          hasAllActions &&
+                                          action !== 'ALL' &&
+                                          STANDARD_ACTIONS.includes(action)
+                                            ? 'opacity-50'
+                                            : ''
                                         }`}
                                       >
                                         {action.toLowerCase()}

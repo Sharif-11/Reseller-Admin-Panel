@@ -92,6 +92,7 @@ export type ActionType =
   | 'APPROVE'
   | 'REJECT'
   | 'BLOCK'
+  | 'NOTIFY'
 // ... other action types
 
 export type BlockActionType =
