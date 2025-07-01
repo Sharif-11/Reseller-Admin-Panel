@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { createContext, useState } from 'react'
+import { createContext, useEffect, useState } from 'react'
 import { authService } from '../Api/auth.api'
 
 export interface User {
@@ -65,8 +65,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     try {
       const result = await authService.verifyLogin()
       if (result?.success) {
-        setUser(result.data?.user || null)
-        return result.data?.user || null
+        // alert(JSON.stringify(result.data, null, 2))
+        result.data.role !== 'Seller' && setUser(result.data?.user || null)
+        return result.data || null
       }
     } catch (error) {
       console.error('Error reloading user data:', error)
@@ -75,9 +76,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     return null
   }
 
-  // useEffect(() => {
-  //   checkLogin()
-  // }, [])
+  useEffect(() => {
+    reloadUser()
+  }, [])
 
   return (
     <UserContext.Provider value={{ user, setUser, loading, error, reloadUser }}>

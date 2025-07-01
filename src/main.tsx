@@ -15,7 +15,6 @@ import AdminOrders from './Components/Orders'
 import AdminPaymentVerification from './Components/PaymentVerification'
 import ProductListing from './Components/ProductListing'
 import AdminProfile from './Components/Profile'
-import { ProtectedRoute } from './Components/ProtectedRoute'
 import RoleManagement from './Components/RoleManagement'
 import SellerManagement from './Components/SellerManagement'
 import SellerWalletManagementPage from './Components/SellerWallet'
@@ -36,14 +35,7 @@ createRoot(document.getElementById('root')!).render(
           <Route>
             <Route path='/' element={<AdminLogin />} />
             <Route path='/forgot-password' element={<ForgotPassword />} />
-            <Route
-              path='/dashboard'
-              element={
-                <ProtectedRoute>
-                  <AdminLayout />
-                </ProtectedRoute>
-              }
-            >
+            <Route path='/dashboard' element={<AdminLayout />}>
               <Route index element={<h1>Dashboard</h1>} />
               <Route path='change-password' element={<ChangePassword />} />
               <Route path='profile' element={<AdminProfile />} />

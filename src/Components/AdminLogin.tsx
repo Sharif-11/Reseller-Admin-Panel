@@ -1,7 +1,7 @@
 import { ErrorMessage, Field, Formik } from 'formik'
 import { Eye, EyeOff, Loader2, Lock, LogIn, Mail, Phone, User } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import * as Yup from 'yup'
 import { authService } from '../Api/auth.api'
 import logo from '../assets/shopbd_logo.png'
@@ -35,6 +35,7 @@ const superAdminValidationSchema = Yup.object({
 })
 
 const AdminLogin = () => {
+  const location = useLocation()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -44,6 +45,28 @@ const AdminLogin = () => {
 
   const { setUser } = useAuth()
   const navigate = useNavigate()
+  useEffect(() => {
+    const checkLogin = async () => {
+      const token = localStorage.getItem('token')
+      if (token) {
+        try {
+          const result = await authService.verifyLogin()
+          if (result?.success) {
+            setUser(result.data || null)
+            //please navigate to the route from where the user came
+            // If user is already logged in, redirect to dashboard
+            alert(JSON.stringify(location, null, 2))
+
+            navigate('/dashboard')
+          }
+        } catch (error) {
+          console.error('Login verification failed:', error)
+          localStorage.removeItem('token') // Clear token on error
+        }
+      }
+    }
+    checkLogin()
+  }, [])
 
   // Check if super admin exists
   useEffect(() => {
