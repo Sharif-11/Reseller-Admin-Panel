@@ -359,6 +359,17 @@ const AdminOrders = () => {
       minute: '2-digit',
     })
   }
+  const getSellerStatusBadge = (verified: boolean) => {
+    return (
+      <span
+        className={`px-2 py-1 rounded-full text-[10px] font-medium ${
+          verified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+        }`}
+      >
+        {verified ? 'Verified' : 'Unverified'}
+      </span>
+    )
+  }
 
   return (
     <div className='px-4 py-6 max-w-6xl mx-auto'>
@@ -1075,7 +1086,10 @@ const AdminOrders = () => {
                           />
                         </svg>
                         <div>
-                          <p className='text-sm font-medium'>{selectedOrder.sellerName}</p>
+                          <p className='text-sm font-medium'>
+                            {selectedOrder.sellerName}{' '}
+                            {getSellerStatusBadge(selectedOrder.sellerVerified || false)}
+                          </p>
                           <p className='text-sm text-gray-500'>{selectedOrder.sellerPhoneNo}</p>
                         </div>
                       </div>
@@ -1127,10 +1141,12 @@ const AdminOrders = () => {
                       <span className='font-medium'>Updated:</span>{' '}
                       {formatDate(selectedOrder.updatedAt)}
                     </p>
-                    <p className='text-sm'>
-                      <span className='font-medium'>Payment Method:</span>{' '}
-                      {selectedOrder.paymentType?.toLowerCase() + ' Payment' || 'N/A'}
-                    </p>
+                    {selectedOrder.paymentType && (
+                      <p className='text-sm'>
+                        <span className='font-medium'>Payment Method:</span>{' '}
+                        {selectedOrder.paymentType?.toLowerCase() + ' Payment' || 'N/A'}
+                      </p>
+                    )}
                     {selectedOrder.courierName && (
                       <p className='text-sm'>
                         <span className='font-medium'>Courier:</span> {selectedOrder.courierName}
