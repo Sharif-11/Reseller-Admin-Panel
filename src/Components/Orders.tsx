@@ -1407,6 +1407,15 @@ const AdminOrders = () => {
                         Total Amount:{' '}
                         {parseFloat(selectedOrder.totalProductSellingPrice).toFixed(2)}৳
                       </p>
+                      <p className='mt-1'>
+                        Minimum Amount:{' '}
+                        {(
+                          parseFloat(selectedOrder.totalProductBasePrice) +
+                          parseFloat(selectedOrder.cashOnAmount || '0') -
+                          parseFloat(selectedOrder.totalProductSellingPrice)
+                        ).toFixed(2)}
+                        ৳
+                      </p>
                     </div>
                   </div>
                 </div>
