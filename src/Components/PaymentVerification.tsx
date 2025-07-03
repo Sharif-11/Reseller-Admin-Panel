@@ -234,12 +234,12 @@ const AdminPaymentVerification = () => {
 
   const renderWalletFlow = (payment: Payment) => {
     const senderWallet =
-      payment.sender === 'SELLER'
+      payment.sender === 'SELLER' || payment.sender === 'CUSTOMER'
         ? `${payment.userWalletName} (${payment.userWalletPhoneNo})`
         : `${payment.userWalletName} (${payment.systemWalletPhoneNo})`
 
     const receiverWallet =
-      payment.sender === 'SELLER'
+      payment.sender === 'SELLER' || payment.sender === 'CUSTOMER'
         ? `${payment.userWalletName} (${payment.systemWalletPhoneNo})`
         : `${payment.userWalletName} (${payment.userWalletPhoneNo})`
 
@@ -471,7 +471,7 @@ const AdminPaymentVerification = () => {
                         {getPaymentTypeText(payment.paymentType)}
                       </div>
                       <div className='text-gray-500 text-xs mt-1'>
-                        {payment.sender === 'SELLER' ? 'Seller to Admin' : 'Admin to Seller'}
+                        {payment.sender === 'SYSTEM' ? 'System to User' : 'User to System'}
                       </div>
                     </td>
                     <td className='px-4 py-4'>{renderWalletFlow(payment)}</td>
@@ -554,7 +554,7 @@ const AdminPaymentVerification = () => {
                     <p className='text-gray-500'>{formatDate(payment.paymentDate)}</p>
                     <h3 className='font-medium'>{getPaymentTypeText(payment.paymentType)}</h3>
                     <p className='text-gray-500 text-xs mt-1'>
-                      {payment.sender === 'SELLER' ? 'Seller to Admin' : 'Admin to Seller'}
+                      {payment.sender === 'SYSTEM' ? 'System to User' : 'User to System'}
                     </p>
                   </div>
                   {getStatusBadge(payment.paymentStatus)}

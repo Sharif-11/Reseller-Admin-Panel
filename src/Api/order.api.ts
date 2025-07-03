@@ -34,8 +34,17 @@ class OrderApi {
   public confirmOrderByAdmin(orderId: number) {
     return apiClient.post(`orders/admin/confirm/${orderId}`)
   }
-  public cancelOrderByAdmin(orderId: number, reason?: string) {
-    return apiClient.post(`orders/admin/cancel/${orderId}`, { reason })
+  public cancelOrderByAdmin(
+    orderId: number,
+    reason?: string,
+    transactionId?: string,
+    systemWalletPhoneNo?: string
+  ) {
+    return apiClient.post(`orders/admin/cancel/${orderId}`, {
+      reason,
+      transactionId,
+      systemWalletPhoneNo,
+    })
   }
 
   public deliverOrderByAdmin({ orderId, trackingUrl }: { orderId: number; trackingUrl: string }) {

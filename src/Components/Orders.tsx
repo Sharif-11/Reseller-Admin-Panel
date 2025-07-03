@@ -63,6 +63,8 @@ interface Order {
     paymentStatus: PaymentStatus
     amount: string
     transactionId: string | null
+    userWalletName: string
+    userWalletPhoneNo: string
   }
 }
 
@@ -113,6 +115,9 @@ const AdminOrders = () => {
     trackingUrl: '',
     remarks: '',
     amountPaidByCustomer: '',
+    refundAmount: '',
+    systemWalletPhoneNo: '',
+    transactionId: '',
   })
   const [actionError, setActionError] = useState('')
 
@@ -230,6 +235,9 @@ const AdminOrders = () => {
       trackingUrl: order.trackingUrl || '',
       remarks: '',
       amountPaidByCustomer: order.amountPaidByCustomer || '',
+      refundAmount: order.deliveryCharge || '',
+      systemWalletPhoneNo: '', // Assuming sellerPhoneNo is used for refund
+      transactionId: '',
     })
   }
 
@@ -294,7 +302,12 @@ const AdminOrders = () => {
         //   nextTab = 'pending'
         //   break
         case 'refund':
-          response = await orderApi.cancelOrderByAdmin(selectedOrder.orderId)
+          response = await orderApi.cancelOrderByAdmin(
+            selectedOrder.orderId,
+            actionData.remarks,
+            actionData.transactionId,
+            actionData.systemWalletPhoneNo
+          )
           nextTab = 'others'
           break
         case 'return':
@@ -620,7 +633,7 @@ const AdminOrders = () => {
                     {/* CANCELLED CONFIRMED - Show Refund if cancelled by seller with completed payment */}
                     {order.orderStatus === 'CONFIRMED' &&
                       order.cancelled &&
-                      order.cancelledBy === 'SELLER' &&
+                      (order.cancelledBy === 'SELLER' || order.cancelledBy === 'CUSTOMER') &&
                       order.Payment?.paymentStatus === 'COMPLETED' && (
                         <button
                           onClick={() => openActionModal('refund', order)}
@@ -761,7 +774,7 @@ const AdminOrders = () => {
                       {/* If order was cancelled by seller and payment was completed - Show Refund */}
                       {order.orderStatus === 'CONFIRMED' &&
                         order.cancelled &&
-                        order.cancelledBy === 'SELLER' &&
+                        (order.cancelledBy === 'SELLER' || order.cancelledBy === 'CUSTOMER') &&
                         order.Payment?.paymentStatus === 'COMPLETED' && (
                           <button
                             onClick={() => openActionModal('refund', order)}
@@ -1355,10 +1368,10 @@ const AdminOrders = () => {
 
       {/* Action Modal */}
       {showActionModal && selectedOrder && (
-        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50'>
-          <div className='bg-white rounded-lg shadow-lg w-full max-w-md'>
-            <div className='p-4 border-b'>
-              <h2 className='text-lg font-medium'>
+        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50'>
+          <div className='bg-white rounded-lg shadow-lg w-full max-w-full sm:max-w-md mx-2 sm:mx-0'>
+            <div className='p-3 sm:p-4 border-b'>
+              <h2 className='text-base sm:text-lg font-medium'>
                 {currentAction === 'confirm' &&
                   (processingOrder ? 'Confirming Order...' : 'Confirm Order')}
                 {currentAction === 'deliver' &&
@@ -1378,10 +1391,10 @@ const AdminOrders = () => {
               </h2>
             </div>
 
-            <div className='p-4 space-y-4'>
-              <div className='bg-gray-50 p-3 rounded-md'>
+            <div className='p-3 sm:p-4 space-y-3 sm:space-y-4'>
+              <div className='bg-gray-50 p-2 sm:p-3 rounded-md'>
                 <div className='flex items-start'>
-                  <div className='flex-shrink-0'>
+                  <div className='flex-shrink-0 mt-0.5'>
                     <svg
                       className='h-5 w-5 text-blue-400'
                       xmlns='http://www.w3.org/2000/svg'
@@ -1395,11 +1408,11 @@ const AdminOrders = () => {
                       />
                     </svg>
                   </div>
-                  <div className='ml-3'>
-                    <h3 className='text-sm font-medium text-gray-800'>
+                  <div className='ml-2 sm:ml-3'>
+                    <h3 className='text-xs sm:text-sm font-medium text-gray-800'>
                       Order # {selectedOrder.orderId}
                     </h3>
-                    <div className='mt-2 text-sm text-gray-700'>
+                    <div className='mt-1 sm:mt-2 text-xs sm:text-sm text-gray-700'>
                       <p>
                         Customer: {selectedOrder.customerName} - {selectedOrder.customerPhoneNo}
                       </p>
@@ -1422,10 +1435,10 @@ const AdminOrders = () => {
               </div>
 
               {actionError && (
-                <div className='bg-red-50 p-3 rounded-md'>
+                <div className='bg-red-50 p-2 sm:p-3 rounded-md'>
                   <div className='flex'>
                     <div className='ml-3'>
-                      <div className='mt-2 text-sm text-red-700'>
+                      <div className='mt-1 text-xs sm:text-sm text-red-700'>
                         <p>{actionError}</p>
                       </div>
                     </div>
@@ -1435,7 +1448,7 @@ const AdminOrders = () => {
 
               {currentAction === 'deliver' && (
                 <div>
-                  <label className='block text-sm font-medium text-gray-700 mb-1'>
+                  <label className='block text-xs sm:text-sm font-medium text-gray-700 mb-1'>
                     Tracking URL *
                   </label>
                   <input
@@ -1443,7 +1456,7 @@ const AdminOrders = () => {
                     value={actionData.trackingUrl}
                     onChange={e => setActionData({ ...actionData, trackingUrl: e.target.value })}
                     placeholder='Enter tracking URL'
-                    className='w-full px-3 py-2 border rounded-md text-sm'
+                    className='w-full px-2 sm:px-3 py-1 sm:py-2 border rounded-md text-xs sm:text-sm'
                     required
                   />
                 </div>
@@ -1451,13 +1464,15 @@ const AdminOrders = () => {
 
               {currentAction === 'cancel' && (
                 <div>
-                  <label className='block text-sm font-medium text-gray-700 mb-1'>Reason *</label>
+                  <label className='block text-xs sm:text-sm font-medium text-gray-700 mb-1'>
+                    Reason *
+                  </label>
                   <textarea
                     value={actionData.remarks}
                     onChange={e => setActionData({ ...actionData, remarks: e.target.value })}
                     placeholder='Enter reason for cancellation...'
                     rows={3}
-                    className='w-full px-3 py-2 border rounded-md text-sm'
+                    className='w-full px-2 sm:px-3 py-1 sm:py-2 border rounded-md text-xs sm:text-sm'
                     required
                   />
                 </div>
@@ -1465,7 +1480,7 @@ const AdminOrders = () => {
 
               {currentAction === 'complete' && (
                 <div>
-                  <label className='block text-sm font-medium text-gray-700 mb-1'>
+                  <label className='block text-xs sm:text-sm font-medium text-gray-700 mb-1'>
                     Amount Paid by Customer *
                   </label>
                   <input
@@ -1475,17 +1490,98 @@ const AdminOrders = () => {
                       setActionData({ ...actionData, amountPaidByCustomer: e.target.value })
                     }
                     placeholder='Enter amount'
-                    className='w-full px-3 py-2 border rounded-md text-sm'
+                    className='w-full px-2 sm:px-3 py-1 sm:py-2 border rounded-md text-xs sm:text-sm'
                     required
                   />
                 </div>
               )}
 
+              {currentAction === 'refund' && selectedOrder.orderType === 'CUSTOMER_ORDER' && (
+                <>
+                  <div className='bg-blue-50 border border-blue-200 rounded-md p-2 sm:p-3'>
+                    <div className='flex items-start gap-2 sm:gap-3'>
+                      <div className='flex-shrink-0 mt-0.5'>
+                        <svg
+                          className='h-4 sm:h-5 w-4 sm:w-5 text-blue-500'
+                          fill='none'
+                          viewBox='0 0 24 24'
+                          stroke='currentColor'
+                        >
+                          <path
+                            strokeLinecap='round'
+                            strokeLinejoin='round'
+                            strokeWidth={2}
+                            d='M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                          />
+                        </svg>
+                      </div>
+                      <div>
+                        <h4 className='text-xs sm:text-sm font-medium text-blue-800 mb-1'>
+                          রিফান্ড নির্দেশনা
+                        </h4>
+                        <p className='text-xs text-blue-700 mb-1 sm:mb-2'>
+                          গ্রাহকের ওয়ালেটে ডেলিভারি চার্জ ফেরত দিন (গ্রাহকের ফোন নম্বর ব্যবহার
+                          করে):
+                        </p>
+                        <div className='bg-white p-1 sm:p-2 rounded border border-blue-100'>
+                          <div className='grid grid-cols-2 gap-1 sm:gap-2 text-xs'>
+                            <div>
+                              <p className='text-gray-500'>গ্রাহকের ফোন:</p>
+                              <p className='font-medium'>
+                                {selectedOrder?.Payment?.userWalletName} (
+                                {selectedOrder?.Payment?.userWalletPhoneNo})
+                              </p>
+                            </div>
+                            <div>
+                              <p className='text-gray-500'>ফেরতের অংক:</p>
+                              <p className='font-medium text-green-600'>
+                                {selectedOrder.deliveryCharge}৳
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className='block text-xs sm:text-sm font-medium text-gray-700 mb-1'>
+                      System Wallet Phone Number *
+                    </label>
+                    <input
+                      type='text'
+                      value={actionData.systemWalletPhoneNo}
+                      onChange={e =>
+                        setActionData({ ...actionData, systemWalletPhoneNo: e.target.value })
+                      }
+                      placeholder='Enter system wallet phone number'
+                      className='w-full px-2 sm:px-3 py-1 sm:py-2 border rounded-md text-xs sm:text-sm'
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className='block text-xs sm:text-sm font-medium text-gray-700 mb-1'>
+                      Transaction ID *
+                    </label>
+                    <input
+                      type='text'
+                      value={actionData.transactionId}
+                      onChange={e =>
+                        setActionData({ ...actionData, transactionId: e.target.value })
+                      }
+                      placeholder='Enter transaction ID'
+                      className='w-full px-2 sm:px-3 py-1 sm:py-2 border rounded-md text-xs sm:text-sm'
+                      required
+                    />
+                  </div>
+                </>
+              )}
+
               {(currentAction === 'return' ||
                 currentAction === 'fail' ||
-                currentAction === 'refund') && (
+                (currentAction === 'refund' && selectedOrder.orderType === 'SELLER_ORDER')) && (
                 <div
-                  className={`p-3 rounded-md border ${
+                  className={`p-2 sm:p-3 rounded-md border ${
                     currentAction === 'refund'
                       ? 'bg-yellow-50 border-yellow-200'
                       : currentAction === 'return'
@@ -1496,7 +1592,7 @@ const AdminOrders = () => {
                   <div className='flex items-start'>
                     <div className='flex-shrink-0 pt-0.5'>
                       <svg
-                        className={`h-5 w-5 ${
+                        className={`h-4 sm:h-5 w-4 sm:w-5 ${
                           currentAction === 'refund'
                             ? 'text-yellow-400'
                             : currentAction === 'return'
@@ -1514,9 +1610,9 @@ const AdminOrders = () => {
                         />
                       </svg>
                     </div>
-                    <div className='ml-3'>
+                    <div className='ml-2 sm:ml-3'>
                       <h3
-                        className={`text-sm font-medium ${
+                        className={`text-xs sm:text-sm font-medium ${
                           currentAction === 'refund'
                             ? 'text-yellow-800'
                             : currentAction === 'return'
@@ -1529,7 +1625,7 @@ const AdminOrders = () => {
                         {currentAction === 'fail' && 'Mark as Failed'}
                       </h3>
                       <div
-                        className={`mt-2 text-sm ${
+                        className={`mt-1 text-xs sm:text-sm ${
                           currentAction === 'refund'
                             ? 'text-yellow-700'
                             : currentAction === 'return'
@@ -1548,8 +1644,11 @@ const AdminOrders = () => {
                         {currentAction === 'refund' &&
                           selectedOrder.Payment?.paymentStatus === 'COMPLETED' && (
                             <p className='mt-1'>
-                              সেলারকে {parseFloat(selectedOrder.deliveryCharge).toFixed(2)}৳ রিফান্ড
-                              করা হবে।
+                              {selectedOrder.orderType === 'SELLER_ORDER'
+                                ? 'সেলারকে'
+                                : 'কাস্টমারকে'}{' '}
+                              {parseFloat(selectedOrder.deliveryCharge).toFixed(2)}৳ রিফান্ড করা
+                              হবে।
                             </p>
                           )}
                       </div>
@@ -1559,18 +1658,18 @@ const AdminOrders = () => {
               )}
             </div>
 
-            <div className='p-4 border-t flex justify-end gap-3'>
+            <div className='p-3 sm:p-4 border-t flex justify-end gap-2 sm:gap-3'>
               <button
                 onClick={closeActionModal}
                 disabled={processingOrder}
-                className='px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50'
+                className='px-3 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50'
               >
                 Cancel
               </button>
               <button
                 onClick={handleActionSubmit}
                 disabled={processingOrder}
-                className={`px-4 py-2 text-sm font-medium text-white rounded-md hover:opacity-90 disabled:opacity-50 flex items-center justify-center min-w-24 ${
+                className={`px-3 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm font-medium text-white rounded-md hover:opacity-90 disabled:opacity-50 flex items-center justify-center min-w-20 sm:min-w-24 ${
                   currentAction === 'refund' ||
                   currentAction === 'fail' ||
                   currentAction === 'cancel' ||
