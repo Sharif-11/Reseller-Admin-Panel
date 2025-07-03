@@ -622,7 +622,12 @@ const AdminOrders = () => {
                           Deliver Order
                         </button>
                         <button
-                          onClick={() => openActionModal('cancel', order)}
+                          onClick={() =>
+                            openActionModal(
+                              order.orderType === 'SELLER_ORDER' ? 'cancel' : 'refund',
+                              order
+                            )
+                          }
                           className='py-1 px-2 bg-red-50 text-red-600 rounded font-medium text-xs'
                         >
                           Cancel Order
@@ -763,7 +768,12 @@ const AdminOrders = () => {
                             Deliver Order
                           </button>
                           <button
-                            onClick={() => openActionModal('cancel', order)}
+                            onClick={() =>
+                              openActionModal(
+                                order.orderType === 'SELLER_ORDER' ? 'cancel' : 'refund',
+                                order
+                              )
+                            }
                             className='text-red-600 hover:text-red-800'
                           >
                             Cancel Order
@@ -936,7 +946,7 @@ const AdminOrders = () => {
 
       {/* Order Details Modal */}
       {showDetailsModal && selectedOrder && (
-        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50'>
+        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-start pt-12 sm:pt-16 justify-center p-2 sm:p-4 z-50 overflow-y-auto'>
           <div className='bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto'>
             <div className='p-4 border-b flex justify-between items-center'>
               <h2 className='text-lg font-medium'>

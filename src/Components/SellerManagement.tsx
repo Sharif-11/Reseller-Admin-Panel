@@ -612,7 +612,7 @@ const SellerManagement = () => {
                     </div>
                     <div>
                       <h4 className='text-sm font-medium text-gray-500'>Balance</h4>
-                      <p className='mt-1 text-sm text-gray-900'>{selectedSeller.balance}</p>
+                      <p className='mt-1 text-sm text-gray-900'>{selectedSeller.balance} Tk.</p>
                     </div>
                     <div>
                       <h4 className='text-sm font-medium text-gray-500'>Email</h4>
