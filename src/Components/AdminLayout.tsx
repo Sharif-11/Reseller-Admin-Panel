@@ -120,6 +120,76 @@ const AdminLayout = () => {
               </svg>
               অর্ডার ম্যানেজমেন্ট
             </NavLink>
+            {/* Payment Management */}
+            <div className='border-b border-indigo-600/30 pb-0.5'>
+              <button
+                onClick={() => toggleAccordion('payments')}
+                className='w-full flex items-center justify-between px-3 py-2 text-indigo-100 hover:bg-indigo-600/30 rounded-lg transition-all text-sm'
+              >
+                <div className='flex items-center'>
+                  <svg
+                    className='w-4 h-4 mr-2'
+                    fill='none'
+                    stroke='currentColor'
+                    viewBox='0 0 24 24'
+                  >
+                    <path
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      strokeWidth={2}
+                      d='M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z'
+                    />
+                  </svg>
+                  পেমেন্ট ম্যানেজমেন্ট
+                </div>
+                <svg
+                  className={`w-3 h-3 transition-transform duration-200 ${
+                    openAccordions.payments ? 'transform rotate-180' : ''
+                  }`}
+                  fill='none'
+                  stroke='currentColor'
+                  viewBox='0 0 24 24'
+                >
+                  <path
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    strokeWidth={2}
+                    d='M19 9l-7 7-7-7'
+                  />
+                </svg>
+              </button>
+
+              {openAccordions.payments && (
+                <div className='ml-6 mt-0.5 space-y-0.5'>
+                  <NavLink
+                    to='/dashboard/payment-verification'
+                    onClick={handleNavClick}
+                    className={({ isActive }) =>
+                      `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
+                        isActive
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-indigo-100 hover:bg-indigo-600/30'
+                      }`
+                    }
+                  >
+                    পেমেন্ট ভেরিফিকেশন
+                  </NavLink>
+                  <NavLink
+                    to='/dashboard/withdraw-requests'
+                    onClick={handleNavClick}
+                    className={({ isActive }) =>
+                      `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
+                        isActive
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-indigo-100 hover:bg-indigo-600/30'
+                      }`
+                    }
+                  >
+                    উইথড্র রিকোয়েস্ট
+                  </NavLink>
+                </div>
+              )}
+            </div>
 
             {/* Product Management */}
             <div className='border-b border-indigo-600/30 pb-0.5'>
@@ -413,77 +483,6 @@ const AdminLayout = () => {
                     }
                   >
                     সেলার ওয়ালেট
-                  </NavLink>
-                </div>
-              )}
-            </div>
-
-            {/* Payment Management */}
-            <div className='border-b border-indigo-600/30 pb-0.5'>
-              <button
-                onClick={() => toggleAccordion('payments')}
-                className='w-full flex items-center justify-between px-3 py-2 text-indigo-100 hover:bg-indigo-600/30 rounded-lg transition-all text-sm'
-              >
-                <div className='flex items-center'>
-                  <svg
-                    className='w-4 h-4 mr-2'
-                    fill='none'
-                    stroke='currentColor'
-                    viewBox='0 0 24 24'
-                  >
-                    <path
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                      strokeWidth={2}
-                      d='M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z'
-                    />
-                  </svg>
-                  পেমেন্ট ম্যানেজমেন্ট
-                </div>
-                <svg
-                  className={`w-3 h-3 transition-transform duration-200 ${
-                    openAccordions.payments ? 'transform rotate-180' : ''
-                  }`}
-                  fill='none'
-                  stroke='currentColor'
-                  viewBox='0 0 24 24'
-                >
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth={2}
-                    d='M19 9l-7 7-7-7'
-                  />
-                </svg>
-              </button>
-
-              {openAccordions.payments && (
-                <div className='ml-6 mt-0.5 space-y-0.5'>
-                  <NavLink
-                    to='/dashboard/payment-verification'
-                    onClick={handleNavClick}
-                    className={({ isActive }) =>
-                      `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
-                        isActive
-                          ? 'bg-indigo-600 text-white'
-                          : 'text-indigo-100 hover:bg-indigo-600/30'
-                      }`
-                    }
-                  >
-                    পেমেন্ট ভেরিফিকেশন
-                  </NavLink>
-                  <NavLink
-                    to='/dashboard/withdraw-requests'
-                    onClick={handleNavClick}
-                    className={({ isActive }) =>
-                      `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
-                        isActive
-                          ? 'bg-indigo-600 text-white'
-                          : 'text-indigo-100 hover:bg-indigo-600/30'
-                      }`
-                    }
-                  >
-                    উইথড্র রিকোয়েস্ট
                   </NavLink>
                 </div>
               )}

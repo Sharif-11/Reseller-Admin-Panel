@@ -166,27 +166,15 @@ const DashboardStats = () => {
     stats?.totalUsersLast7Days || 0,
     (stats?.totalUsers || 0) - (stats?.totalUsersLast7Days || 0)
   )
-  const userTrend30Days = calculateTrend(
-    stats?.totalUsersLast30Days || 0,
-    (stats?.totalUsers || 0) - (stats?.totalUsersLast30Days || 0)
-  )
 
   const orderTrend7Days = calculateTrend(
     stats?.totalOrdersCompletedLast7Days || 0,
     (stats?.totalOrdersCompleted || 0) - (stats?.totalOrdersCompletedLast7Days || 0)
   )
-  const orderTrend30Days = calculateTrend(
-    stats?.totalOrdersCompletedLast30Days || 0,
-    (stats?.totalOrdersCompleted || 0) - (stats?.totalOrdersCompletedLast30Days || 0)
-  )
 
   const salesTrend7Days = calculateTrend(
     stats?.totalSalesLast7Days || 0,
     (stats?.totalSales || 0) - (stats?.totalSalesLast7Days || 0)
-  )
-  const salesTrend30Days = calculateTrend(
-    stats?.totalSalesLast30Days || 0,
-    (stats?.totalSales || 0) - (stats?.totalSalesLast30Days || 0)
   )
 
   return (
