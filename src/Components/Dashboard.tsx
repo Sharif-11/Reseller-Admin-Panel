@@ -7,18 +7,46 @@ interface StatCardProps {
   value: string | number
   icon: React.ReactNode
   trend?: {
-    value: string | number
+    value: string
     positive: boolean
   }
+  description?: string
+  isLoading?: boolean
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend }) => {
+const StatCard: React.FC<StatCardProps> = ({
+  title,
+  value,
+  icon,
+  trend,
+  description,
+  isLoading,
+}) => {
+  if (isLoading) {
+    return (
+      <div className='bg-white rounded-lg shadow p-6 h-full animate-pulse'>
+        <div className='flex justify-between items-start'>
+          <div className='space-y-2 w-full'>
+            <div className='h-4 bg-gray-200 rounded w-3/4'></div>
+            <div className='h-6 bg-gray-200 rounded w-1/2'></div>
+            {description && <div className='h-3 bg-gray-200 rounded w-full'></div>}
+            {trend && <div className='h-3 bg-gray-200 rounded w-1/2'></div>}
+          </div>
+          <div className='bg-gray-200 rounded-full p-3 text-gray-200'>
+            <div className='w-6 h-6'></div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className='bg-white rounded-lg shadow p-6 h-full'>
       <div className='flex justify-between items-start'>
         <div>
           <p className='text-sm font-medium text-gray-500'>{title}</p>
           <p className='text-2xl font-semibold text-gray-900 mt-1'>{value}</p>
+          {description && <p className='text-xs text-gray-500 mt-1'>{description}</p>}
           {trend && (
             <span
               className={`inline-flex items-center text-xs mt-2 ${
@@ -71,10 +99,40 @@ interface DashboardStatsData {
   totalOrdersCompleted: number
   totalOrdersCompletedLast30Days: number
   totalOrdersCompletedLast7Days: number
+  totalSalesLast30Days: number
+  totalSalesLast7Days: number
+}
+
+const formatCurrency = (value: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value)
+}
+
+const calculateTrend = (
+  current: number,
+  previous: number
+): { value: string; positive: boolean } => {
+  if (previous === 0) {
+    return {
+      value: current > 0 ? '100% increase' : 'No change',
+      positive: current > 0,
+    }
+  }
+
+  const percentage = ((current - previous) / previous) * 100
+  const absolutePercentage = Math.abs(percentage)
+
+  return {
+    value: `${absolutePercentage.toFixed(1)}% ${percentage > 0 ? 'increase' : 'decrease'}`,
+    positive: percentage > 0,
+  }
 }
 
 const DashboardStats = () => {
-  // Replace the useState and useEffect logic with this:
   const {
     data: stats,
     isLoading,
@@ -95,15 +153,6 @@ const DashboardStats = () => {
     }
   )
 
-  // Then update the loading and error checks to:
-  if (isLoading) {
-    return (
-      <div className='flex justify-center items-center min-h-[200px]'>
-        <div className='animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500'></div>
-      </div>
-    )
-  }
-
   if (error) {
     return (
       <div className='flex justify-center items-center min-h-[200px]'>
@@ -112,15 +161,33 @@ const DashboardStats = () => {
     )
   }
 
-  if (!stats) return null
-
   // Calculate trends
-  const userTrend7Days =
-    stats.totalUsers > 0 ? ((stats.totalUsersLast7Days / stats.totalUsers) * 100).toFixed(1) : 0
-  const orderTrend7Days =
-    stats.totalOrdersCompleted > 0
-      ? ((stats.totalOrdersCompletedLast7Days / stats.totalOrdersCompleted) * 100).toFixed(1)
-      : 0
+  const userTrend7Days = calculateTrend(
+    stats?.totalUsersLast7Days || 0,
+    (stats?.totalUsers || 0) - (stats?.totalUsersLast7Days || 0)
+  )
+  const userTrend30Days = calculateTrend(
+    stats?.totalUsersLast30Days || 0,
+    (stats?.totalUsers || 0) - (stats?.totalUsersLast30Days || 0)
+  )
+
+  const orderTrend7Days = calculateTrend(
+    stats?.totalOrdersCompletedLast7Days || 0,
+    (stats?.totalOrdersCompleted || 0) - (stats?.totalOrdersCompletedLast7Days || 0)
+  )
+  const orderTrend30Days = calculateTrend(
+    stats?.totalOrdersCompletedLast30Days || 0,
+    (stats?.totalOrdersCompleted || 0) - (stats?.totalOrdersCompletedLast30Days || 0)
+  )
+
+  const salesTrend7Days = calculateTrend(
+    stats?.totalSalesLast7Days || 0,
+    (stats?.totalSales || 0) - (stats?.totalSalesLast7Days || 0)
+  )
+  const salesTrend30Days = calculateTrend(
+    stats?.totalSalesLast30Days || 0,
+    (stats?.totalSales || 0) - (stats?.totalSalesLast30Days || 0)
+  )
 
   return (
     <div className='p-4 md:p-6'>
@@ -147,7 +214,7 @@ const DashboardStats = () => {
         <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
           <StatCard
             title='Total Orders'
-            value={stats.totalOrders}
+            value={stats?.totalOrders || 0}
             icon={
               <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                 <path
@@ -158,10 +225,11 @@ const DashboardStats = () => {
                 />
               </svg>
             }
+            isLoading={isLoading}
           />
           <StatCard
             title='Completed Orders'
-            value={stats.totalOrdersCompleted}
+            value={stats?.totalOrdersCompleted || 0}
             icon={
               <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                 <path
@@ -172,14 +240,15 @@ const DashboardStats = () => {
                 />
               </svg>
             }
-            trend={{
-              value: `${orderTrend7Days}% of total`,
-              positive: parseFloat(orderTrend7Days || '0') > 10,
-            }}
+            description={`${stats?.totalOrdersCompletedLast7Days || 0} in last 7 days, ${
+              stats?.totalOrdersCompletedLast30Days || 0
+            } in last 30 days`}
+            trend={orderTrend7Days}
+            isLoading={isLoading}
           />
           <StatCard
             title='Total Sales'
-            value={`$${stats.totalSales.toLocaleString()}`}
+            value={formatCurrency(stats?.totalSales || 0)}
             icon={
               <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                 <path
@@ -190,10 +259,15 @@ const DashboardStats = () => {
                 />
               </svg>
             }
+            description={`${formatCurrency(
+              stats?.totalSalesLast7Days || 0
+            )} in last 7 days, ${formatCurrency(stats?.totalSalesLast30Days || 0)} in last 30 days`}
+            trend={salesTrend7Days}
+            isLoading={isLoading}
           />
           <StatCard
             title='Products Sold'
-            value={stats.totalProductsSold}
+            value={stats?.totalProductsSold || 0}
             icon={
               <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                 <path
@@ -204,6 +278,7 @@ const DashboardStats = () => {
                 />
               </svg>
             }
+            isLoading={isLoading}
           />
         </div>
       </div>
@@ -229,7 +304,7 @@ const DashboardStats = () => {
         <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
           <StatCard
             title='Total Users'
-            value={stats.totalUsers}
+            value={stats?.totalUsers || 0}
             icon={
               <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                 <path
@@ -240,14 +315,15 @@ const DashboardStats = () => {
                 />
               </svg>
             }
-            trend={{
-              value: `${userTrend7Days}% of total`,
-              positive: parseFloat(userTrend7Days || '0') > 10,
-            }}
+            description={`${stats?.totalUsersLast7Days || 0} in last 7 days, ${
+              stats?.totalUsersLast30Days || 0
+            } in last 30 days`}
+            trend={userTrend7Days}
+            isLoading={isLoading}
           />
           <StatCard
             title='Customers'
-            value={stats.totalCustomers}
+            value={stats?.totalCustomers || 0}
             icon={
               <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                 <path
@@ -258,10 +334,11 @@ const DashboardStats = () => {
                 />
               </svg>
             }
+            isLoading={isLoading}
           />
           <StatCard
             title='Sellers'
-            value={stats.totalSellers}
+            value={stats?.totalSellers || 0}
             icon={
               <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                 <path
@@ -272,14 +349,22 @@ const DashboardStats = () => {
                 />
               </svg>
             }
+            description={`${stats?.totalVerifiedSellers || 0} verified, ${
+              stats?.totalUnverifiedSellers || 0
+            } unverified`}
             trend={{
-              value: `${stats.totalVerifiedSellers} verified`,
-              positive: true,
+              value: `${
+                stats && stats.totalSellers > 0
+                  ? Math.round((stats.totalVerifiedSellers / stats.totalSellers) * 100)
+                  : 0
+              }% verified`,
+              positive: (stats?.totalVerifiedSellers || 0) > 0,
             }}
+            isLoading={isLoading}
           />
           <StatCard
             title='Admins'
-            value={stats.totalAdmins + stats.totalSuperAdmins}
+            value={(stats?.totalAdmins || 0) + (stats?.totalSuperAdmins || 0)}
             icon={
               <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                 <path
@@ -290,6 +375,8 @@ const DashboardStats = () => {
                 />
               </svg>
             }
+            description={`${stats?.totalSuperAdmins || 0} super admins`}
+            isLoading={isLoading}
           />
         </div>
       </div>
