@@ -1,5 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { QueryClient, QueryClientProvider } from 'react-query'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import AddProduct from './Components/AddProduct'
 import AdminLayout from './Components/AdminLayout'
@@ -10,6 +11,8 @@ import AdminBalanceStatement from './Components/BalanceStatement'
 import CategoryManagement from './Components/CategoryManagement'
 import ChangePassword from './Components/ChangePassword'
 import CommissionTable from './Components/CommissionTable'
+import ConfigurationSettings from './Components/Configuration'
+import DashboardStats from './Components/Dashboard'
 import ForgotPassword from './Components/ForgotPassword'
 import AdminOrders from './Components/Orders'
 import AdminPaymentVerification from './Components/PaymentVerification'
@@ -24,6 +27,8 @@ import SystemWalletPage from './Components/SystemWallet'
 import AdminWithdrawRequests from './Components/WithdrawRequest'
 import { UserProvider } from './Context/userContext'
 import './index.css'
+
+const queryClient = new QueryClient()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -44,7 +49,14 @@ createRoot(document.getElementById('root')!).render(
                 </ProtectedRoute>
               }
             >
-              <Route index element={<h1>Dashboard</h1>} />
+              <Route
+                index
+                element={
+                  <QueryClientProvider client={queryClient}>
+                    <DashboardStats />
+                  </QueryClientProvider>
+                }
+              />
               <Route path='change-password' element={<ChangePassword />} />
               <Route path='profile' element={<AdminProfile />} />
               <Route path='seller-management' element={<SellerManagement />} />
@@ -62,6 +74,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path='balance-statement' element={<AdminBalanceStatement />} />
               <Route path='commission-management' element={<CommissionTable />} />
               <Route path='announcement-management' element={<AnnouncementManagement />} />
+              <Route path='configuration-settings' element={<ConfigurationSettings />} />
             </Route>
           </Route>
 

@@ -586,8 +586,8 @@ const AdminLayout = () => {
                     ঘোষণা ম্যানেজমেন্ট
                   </NavLink>
 
-                  {/* <NavLink
-                    to='/dashboard/notification-settings'
+                  <NavLink
+                    to='/dashboard/configuration-settings'
                     onClick={handleNavClick}
                     className={({ isActive }) =>
                       `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
@@ -597,8 +597,8 @@ const AdminLayout = () => {
                       }`
                     }
                   >
-                    নোটিফিকেশন সেটিংস
-                  </NavLink> */}
+                    কনফিগারেশন সেটিংস
+                  </NavLink>
                   <NavLink
                     to='/dashboard/change-password'
                     onClick={handleNavClick}
