@@ -514,6 +514,31 @@ const AdminLayout = () => {
               </svg>
               ব্যালেন্স স্টেটমেন্ট
             </NavLink>
+            <NavLink
+              to='/dashboard/support-tickets'
+              onClick={handleNavClick}
+              className={({ isActive }) =>
+                `flex items-center px-3 py-2 rounded-lg transition-all text-sm ${
+                  isActive ? 'bg-indigo-600 text-white' : 'text-indigo-100 hover:bg-indigo-600/50'
+                }`
+              }
+            >
+              <svg
+                className='w-4 h-4 mr-2'
+                fill='none'
+                stroke='currentColor'
+                viewBox='0 0 24 24'
+                xmlns='http://www.w3.org/2000/svg'
+              >
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth={2}
+                  d='M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z'
+                />
+              </svg>
+              সাপোর্ট টিকেট
+            </NavLink>
 
             {/* Settings Section */}
             <div className='border-b border-indigo-600/30 pb-0.5'>

@@ -23,6 +23,7 @@ import RoleManagement from './Components/RoleManagement'
 import SellerManagement from './Components/SellerManagement'
 import SellerWalletManagementPage from './Components/SellerWallet'
 import ShopManagement from './Components/ShopManagement'
+import AdminSupportTickets from './Components/Support Ticket/TicketList'
 import SystemWalletPage from './Components/SystemWallet'
 import AdminWithdrawRequests from './Components/WithdrawRequest'
 import { UserProvider } from './Context/userContext'
@@ -74,6 +75,14 @@ createRoot(document.getElementById('root')!).render(
               <Route path='balance-statement' element={<AdminBalanceStatement />} />
               <Route path='commission-management' element={<CommissionTable />} />
               <Route path='announcement-management' element={<AnnouncementManagement />} />
+              <Route
+                path='support-tickets'
+                element={
+                  <QueryClientProvider client={new QueryClient()}>
+                    <AdminSupportTickets />
+                  </QueryClientProvider>
+                }
+              />
               <Route path='configuration-settings' element={<ConfigurationSettings />} />
             </Route>
           </Route>
