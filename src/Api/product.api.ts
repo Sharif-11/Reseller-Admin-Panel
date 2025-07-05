@@ -28,6 +28,7 @@ interface ProductCreateData {
   description: string
   basePrice: number
   suggestedMaxPrice: number
+  videoUrl?: string | null
 }
 
 interface ProductUpdateData {
@@ -37,6 +38,7 @@ interface ProductUpdateData {
   description?: string
   basePrice?: number
   suggestedMaxPrice?: number
+  videoUrl?: string | null
 }
 
 interface Variant {

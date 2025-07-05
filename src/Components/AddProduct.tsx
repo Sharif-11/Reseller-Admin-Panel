@@ -40,6 +40,8 @@ const AddProductBasic = () => {
     description: Yup.string()
       .required('Product description is required')
       .min(10, 'Product description must be at least 10 characters'),
+    videoUrl: Yup.string().optional().url('Invalid video URL format'),
+
     basePrice: Yup.number().required('Price is required').min(0, 'Price must be zero or greater'),
     suggestedMaxPrice: Yup.number()
       .required('Suggested max price is required')
@@ -55,11 +57,13 @@ const AddProductBasic = () => {
       description: '',
       basePrice: 0,
       suggestedMaxPrice: 0,
+      videoUrl: '',
     },
     validationSchema,
     onSubmit: async values => {
       try {
         setError(null)
+        console.log(values)
         const response = await productService.createProduct({
           shopId: values.shopId,
           categoryId: values.categoryId,
@@ -67,6 +71,7 @@ const AddProductBasic = () => {
           description: values.description,
           basePrice: values.basePrice,
           suggestedMaxPrice: values.suggestedMaxPrice,
+          videoUrl: values.videoUrl || null,
         })
 
         if (response.success) {
@@ -301,6 +306,29 @@ const AddProductBasic = () => {
           />
           {formik.touched.description && formik.errors.description && (
             <p className='mt-1 text-sm text-red-600'>{formik.errors.description}</p>
+          )}
+        </div>
+        {/* Video URL */}
+        <div>
+          <label htmlFor='videoUrl' className='block text-sm font-medium text-gray-700 mb-1'>
+            ভিডিও লিঙ্ক (অপশনাল)
+          </label>
+          <input
+            type='text'
+            id='videoUrl'
+            name='videoUrl'
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur}
+            value={formik.values.videoUrl}
+            className={`block w-full border rounded-md py-2 px-3 focus:outline-none ${
+              formik.touched.videoUrl && formik.errors.videoUrl
+                ? 'border-red-500'
+                : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+            }`}
+            placeholder='Enter video URL'
+          />
+          {formik.touched.videoUrl && formik.errors.videoUrl && (
+            <p className='mt-1 text-sm text-red-600'>{formik.errors.videoUrl}</p>
           )}
         </div>
 
