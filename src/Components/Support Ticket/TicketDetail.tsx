@@ -69,7 +69,7 @@ const AdminTicketDetail = () => {
 
       // Check if total files exceed 5
       if (files.length + newFiles.length > 5) {
-        setError('Maximum 5 attachments allowed')
+        setError('সর্বোচ্চ ৫টি ছবি আপলোড করতে পারবেন')
         return
       }
 

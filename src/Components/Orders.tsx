@@ -9,6 +9,7 @@ import {
   type PaymentStatus,
   type PaymentType,
 } from '../Api/order.api'
+import ProductImagePreviewModal from './ProductImagePreview'
 
 interface Order {
   orderId: number
@@ -94,6 +95,8 @@ const AdminOrders = () => {
   const [allOrders, setAllOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [fetching, setFetching] = useState(false)
+  const [previewProductImage, setPreviewProductImage] = useState<string | null>(null)
+  const [previewProductName, setPreviewProductName] = useState<string>('')
   const navigate = useNavigate()
   const [pagination, setPagination] = useState<Record<string, PaginationState>>({
     pending: { currentPage: 1, totalPages: 1, totalOrders: 0, pageSize: 10 },
@@ -1275,7 +1278,11 @@ const AdminOrders = () => {
                         <img
                           src={product.productImage}
                           alt={product.productName}
-                          className='w-16 h-16 object-cover rounded-md'
+                          className='w-16 h-16 object-cover rounded-md cursor-pointer'
+                          onClick={() => {
+                            setPreviewProductImage(product.productImage)
+                            setPreviewProductName(product.productName)
+                          }}
                         />
                       )}
                       <div className='ml-3 flex-1'>
@@ -1706,6 +1713,16 @@ const AdminOrders = () => {
             </div>
           </div>
         </div>
+      )}
+      {previewProductImage && (
+        <ProductImagePreviewModal
+          imageUrl={previewProductImage}
+          productName={previewProductName}
+          onClose={() => {
+            setPreviewProductImage(null)
+            setPreviewProductName('')
+          }}
+        />
       )}
     </div>
   )
