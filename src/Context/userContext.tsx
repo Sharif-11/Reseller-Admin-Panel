@@ -7,7 +7,7 @@ export interface User {
   phoneNo: string
   name: string
   email?: string
-  role: 'SuperAdmin' | 'Admin'
+  role: 'SuperAdmin' | 'Admin' | 'Seller' | 'Customer'
 }
 
 interface UserContextType {

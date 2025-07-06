@@ -23,6 +23,7 @@ import RoleManagement from './Components/RoleManagement'
 import SellerManagement from './Components/SellerManagement'
 import SellerWalletManagementPage from './Components/SellerWallet'
 import ShopManagement from './Components/ShopManagement'
+import AdminTicketDetail from './Components/Support Ticket/TicketDetail'
 import AdminSupportTickets from './Components/Support Ticket/TicketList'
 import SystemWalletPage from './Components/SystemWallet'
 import AdminWithdrawRequests from './Components/WithdrawRequest'
@@ -80,6 +81,14 @@ createRoot(document.getElementById('root')!).render(
                 element={
                   <QueryClientProvider client={new QueryClient()}>
                     <AdminSupportTickets />
+                  </QueryClientProvider>
+                }
+              />
+              <Route
+                path='support-tickets/:ticketId'
+                element={
+                  <QueryClientProvider client={new QueryClient()}>
+                    <AdminTicketDetail />
                   </QueryClientProvider>
                 }
               />

@@ -25,7 +25,7 @@ class FtpService {
    */
   async uploadFile(file: File, options: UploadOptions = {}): Promise<ApiResponse<UploadResponse>> {
     const formData = new FormData()
-    const fieldName = options.fieldName || 'image'
+    const fieldName = 'image'
 
     formData.append(fieldName, file)
 

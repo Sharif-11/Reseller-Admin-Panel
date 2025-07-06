@@ -95,27 +95,30 @@ class SupportTicketApi {
 
   private async uploadAttachments(files: File[]): Promise<ApiResponse<string[]>> {
     try {
-      const uploadPromises = files.map(file =>
-        ftpService.uploadFile(file, {
-          fieldName: 'supportAttachment',
+      const urls: string[] = []
+
+      // Process files sequentially (one after another)
+      for (const file of files) {
+        const result = await ftpService.uploadFile(file, {
+          fieldName: 'image',
           additionalData: { type: 'SUPPORT_TICKET' },
         })
-      )
 
-      const results = await Promise.all(uploadPromises)
-      const failedUpload = results.find(result => !result.success)
+        console.log('Attachment upload result:', result)
 
-      if (failedUpload) {
-        return {
-          success: false,
-          error: failedUpload.error || 'One or more files failed to upload',
-          statusCode: failedUpload.statusCode || 500,
+        if (!result.success) {
+          // If any upload fails, stop and return the error immediately
+          return {
+            success: false,
+            error: result.error || 'File upload failed',
+            statusCode: result.statusCode || 500,
+          }
+        }
+
+        if (result.data?.publicUrl) {
+          urls.push(result.data.publicUrl)
         }
       }
-
-      const urls = results
-        .filter(result => result.success && result.data)
-        .map(result => result.data!.publicUrl)
 
       return {
         success: true,
@@ -131,7 +134,6 @@ class SupportTicketApi {
       }
     }
   }
-
   public async replyToTicket(
     ticketId: string,
     message: string,
