@@ -439,7 +439,7 @@ const AdminManagement = () => {
           <input
             type='text'
             className='block w-full rounded-md border border-gray-300 bg-white py-1.5 pl-9 pr-3 text-xs placeholder-gray-500 focus:border-indigo-500 focus:text-gray-900 focus:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 md:text-sm md:py-2 md:pl-10'
-            placeholder='Search admins...'
+            placeholder='Search admins by name or phone number...'
             value={searchTerm}
             onChange={handleSearch}
           />

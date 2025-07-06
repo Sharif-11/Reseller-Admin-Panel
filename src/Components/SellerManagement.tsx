@@ -268,7 +268,7 @@ const SellerManagement = () => {
           <input
             type='text'
             className='block w-full rounded-md border border-gray-300 bg-white py-2 pl-10 pr-3 text-sm placeholder-gray-500 focus:border-indigo-500 focus:text-gray-900 focus:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-500'
-            placeholder='Search sellers...'
+            placeholder='Search sellers by name or phone number...'
             value={searchTerm}
             onChange={handleSearch}
           />
