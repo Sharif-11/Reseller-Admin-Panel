@@ -64,6 +64,7 @@ const AddProductBasic = () => {
       try {
         setError(null)
         console.log(values)
+        // console.log()
         const response = await productService.createProduct({
           shopId: values.shopId,
           categoryId: values.categoryId,
@@ -71,7 +72,7 @@ const AddProductBasic = () => {
           description: values.description,
           basePrice: values.basePrice,
           suggestedMaxPrice: values.suggestedMaxPrice,
-          videoUrl: values.videoUrl || null,
+          videoUrl: values.videoUrl,
         })
 
         if (response.success) {

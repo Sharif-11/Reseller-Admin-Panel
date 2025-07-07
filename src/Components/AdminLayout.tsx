@@ -4,7 +4,7 @@ import { UserContext } from '../Context/userContext'
 import AdminHeader from './AdminHeader'
 
 const AdminLayout = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [openAccordions, setOpenAccordions] = useState({
     products: false,
     users: false,

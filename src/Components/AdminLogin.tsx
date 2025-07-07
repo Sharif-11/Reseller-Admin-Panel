@@ -1,11 +1,12 @@
 import { ErrorMessage, Field, Formik } from 'formik'
 import { Eye, EyeOff, Loader2, Lock, LogIn, Mail, Phone, User } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import * as Yup from 'yup'
 import { authService } from '../Api/auth.api'
 import logo from '../assets/shopbd_logo.png'
 import { useAuth } from '../Hooks/useAuth'
+import { DASHBOARD_KEY } from './DashboardTracker'
 import Loading from './Loading'
 
 // Validation Schema for Login
@@ -35,7 +36,6 @@ const superAdminValidationSchema = Yup.object({
 })
 
 const AdminLogin = () => {
-  const location = useLocation()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -47,22 +47,19 @@ const AdminLogin = () => {
   const navigate = useNavigate()
   useEffect(() => {
     const checkLogin = async () => {
-      const token = localStorage.getItem('token')
-      if (token) {
-        try {
-          const result = await authService.verifyLogin()
-          if (result?.success) {
-            setUser(result.data || null)
-            //please navigate to the route from where the user came
-            // If user is already logged in, redirect to dashboard
-            const from = (location.state as any)?.from || '/dashboard'
+      try {
+        const result = await authService.verifyLogin()
+        if (result?.success) {
+          setUser(result.data || null)
+          //please navigate to the route from where the user came
+          // If user is already logged in, redirect to dashboard
+          const previousPath = localStorage.getItem(DASHBOARD_KEY)
+          const from = previousPath || '/dashboard'
 
-            navigate(from)
-          }
-        } catch (error) {
-          console.error('Login verification failed:', error)
-          localStorage.removeItem('token') // Clear token on error
+          navigate(from)
         }
+      } catch (error) {
+        console.error('Login verification failed:', error)
       }
     }
     checkLogin()
@@ -99,7 +96,6 @@ const AdminLogin = () => {
       })
 
       if (success && data?.token && data?.user) {
-        localStorage.setItem('token', data.token)
         setUser(data.user)
         navigate('/dashboard')
       } else {
@@ -139,7 +135,6 @@ const AdminLogin = () => {
         })
 
         if (loginResponse.success && loginResponse.data?.token && loginResponse.data?.user) {
-          localStorage.setItem('token', loginResponse.data.token)
           setUser(loginResponse.data.user)
           navigate('/dashboard')
         }

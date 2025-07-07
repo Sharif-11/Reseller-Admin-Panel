@@ -13,6 +13,7 @@ import ChangePassword from './Components/ChangePassword'
 import CommissionTable from './Components/CommissionTable'
 import ConfigurationSettings from './Components/Configuration'
 import DashboardStats from './Components/Dashboard'
+import DashboardTracker from './Components/DashboardTracker'
 import ForgotPassword from './Components/ForgotPassword'
 import AdminOrders from './Components/Orders'
 import AdminPaymentVerification from './Components/PaymentVerification'
@@ -48,6 +49,7 @@ createRoot(document.getElementById('root')!).render(
               element={
                 <ProtectedRoute>
                   <AdminLayout />
+                  <DashboardTracker />
                 </ProtectedRoute>
               }
             >

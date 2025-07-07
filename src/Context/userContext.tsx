@@ -31,42 +31,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [loading] = useState(false) // Start with true to prevent flash of unauthorized content
   const [error] = useState<Error | null>(null)
 
-  // const checkLogin = async () => {
-  //   const token = localStorage.getItem('token')
-  //   if (!token) {
-  //     setLoading(false)
-  //     return
-  //   }
-
-  //   try {
-  //     setLoading(true)
-  //     // alert('inside user provider checkLogin')
-  //     const result = await authService.verifyLogin()
-
-  //     if (result?.success) {
-  //       setUser(result.data?.user || null)
-
-  //       if (result.data?.token) {
-  //         localStorage.setItem('token', result.data?.token)
-  //       }
-  //     } else {
-  //       setUser(null)
-  //     }
-  //   } catch (error) {
-  //     console.error('Login verification failed:', error)
-  //     setError(error instanceof Error ? error : new Error('Login verification failed'))
-  //     setUser(null)
-  //   } finally {
-  //     setLoading(false)
-  //   }
-  // }
-
   const reloadUser = async (): Promise<User | null> => {
     try {
       const result = await authService.verifyLogin()
       if (result?.success) {
         // alert(JSON.stringify(result.data, null, 2))
-        result.data.role !== 'Seller' && setUser(result.data?.user || null)
+        // alert(JSON.stringify(result.data, null, 2))
+        console.log('User data reloaded:', result.data)
+        setUser(result.data || null)
         return result.data || null
       }
     } catch (error) {

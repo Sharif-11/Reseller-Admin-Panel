@@ -27,13 +27,14 @@ class ApiClient {
     this.instance = axios.create({
       baseURL,
       timeout: 10000,
+      withCredentials: true,
       headers: {
         Accept: 'application/json',
       },
       ...config,
     })
 
-    this.setupInterceptors()
+    // this.setupInterceptors()
   }
 
   public static getInstance(baseURL: string, config?: AxiosRequestConfig): ApiClient {
@@ -41,19 +42,6 @@ class ApiClient {
       ApiClient._instance = new ApiClient(baseURL, config)
     }
     return ApiClient._instance
-  }
-
-  private setupInterceptors(): void {
-    this.instance.interceptors.request.use(
-      config => {
-        const token = localStorage.getItem('token')
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`
-        }
-        return config
-      },
-      error => Promise.reject(error)
-    )
   }
 
   // Standard HTTP methods
