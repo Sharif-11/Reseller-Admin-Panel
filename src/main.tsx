@@ -30,6 +30,7 @@ import SystemWalletPage from './Components/SystemWallet'
 import AdminWithdrawRequests from './Components/WithdrawRequest'
 import { UserProvider } from './Context/userContext'
 import './index.css'
+import CustomerManagement from './Components/CustomerManagement'
 
 const queryClient = new QueryClient()
 
@@ -64,6 +65,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path='change-password' element={<ChangePassword />} />
               <Route path='profile' element={<AdminProfile />} />
               <Route path='seller-management' element={<SellerManagement />} />
+              <Route path='customer-management' element={<CustomerManagement />} />
               <Route path='admin-management' element={<AdminManagement />} />
               <Route path='order-management' element={<AdminOrders />} />
               <Route path='role-permission' element={<RoleManagement />} />

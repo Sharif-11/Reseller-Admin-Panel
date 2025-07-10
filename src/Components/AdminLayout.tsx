@@ -330,6 +330,19 @@ const AdminLayout = () => {
                     সেলার ম্যানেজমেন্ট
                   </NavLink>
                   <NavLink
+                    to='/dashboard/customer-management'
+                    onClick={handleNavClick}
+                    className={({ isActive }) =>
+                      `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
+                        isActive
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-indigo-100 hover:bg-indigo-600/30'
+                      }`
+                    }
+                  >
+                    গ্রাহক ম্যানেজমেন্ট
+                  </NavLink>
+                  <NavLink
                     to='/dashboard/admin-management'
                     onClick={handleNavClick}
                     className={({ isActive }) =>

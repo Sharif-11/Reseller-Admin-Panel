@@ -269,6 +269,19 @@ class UserManagementApiService {
       currentPage: number
     }>('auth/get-all-users', { params })
   }
+  async getAllCustomers({
+    page = 1,
+    limit = 10,
+    phoneNo,
+  }: {
+    page?: number
+    limit?: number
+    phoneNo?: string
+  }) {
+    return apiClient.get('auth/get-all-customers', {
+      params: { page, limit, phoneNo },
+    })
+  }
 
   // ==========================================
   // ROLE & PERMISSION METHODS
