@@ -1511,90 +1511,9 @@ const AdminOrders = () => {
                 </div>
               )}
 
-              {currentAction === 'refund' && selectedOrder.orderType === 'CUSTOMER_ORDER' && (
-                <>
-                  <div className='bg-blue-50 border border-blue-200 rounded-md p-2 sm:p-3'>
-                    <div className='flex items-start gap-2 sm:gap-3'>
-                      <div className='flex-shrink-0 mt-0.5'>
-                        <svg
-                          className='h-4 sm:h-5 w-4 sm:w-5 text-blue-500'
-                          fill='none'
-                          viewBox='0 0 24 24'
-                          stroke='currentColor'
-                        >
-                          <path
-                            strokeLinecap='round'
-                            strokeLinejoin='round'
-                            strokeWidth={2}
-                            d='M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
-                          />
-                        </svg>
-                      </div>
-                      <div>
-                        <h4 className='text-xs sm:text-sm font-medium text-blue-800 mb-1'>
-                          রিফান্ড নির্দেশনা
-                        </h4>
-                        <p className='text-xs text-blue-700 mb-1 sm:mb-2'>
-                          গ্রাহকের ওয়ালেটে ডেলিভারি চার্জ ফেরত দিন (গ্রাহকের ফোন নম্বর ব্যবহার
-                          করে):
-                        </p>
-                        <div className='bg-white p-1 sm:p-2 rounded border border-blue-100'>
-                          <div className='grid grid-cols-2 gap-1 sm:gap-2 text-xs'>
-                            <div>
-                              <p className='text-gray-500'>গ্রাহকের ফোন:</p>
-                              <p className='font-medium'>
-                                {selectedOrder?.Payment?.userWalletName} (
-                                {selectedOrder?.Payment?.userWalletPhoneNo})
-                              </p>
-                            </div>
-                            <div>
-                              <p className='text-gray-500'>ফেরতের অংক:</p>
-                              <p className='font-medium text-green-600'>
-                                {selectedOrder.deliveryCharge}৳
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className='block text-xs sm:text-sm font-medium text-gray-700 mb-1'>
-                      System Wallet Phone Number *
-                    </label>
-                    <input
-                      type='text'
-                      value={actionData.systemWalletPhoneNo}
-                      onChange={e =>
-                        setActionData({ ...actionData, systemWalletPhoneNo: e.target.value })
-                      }
-                      placeholder='Enter system wallet phone number'
-                      className='w-full px-2 sm:px-3 py-1 sm:py-2 border rounded-md text-xs sm:text-sm'
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className='block text-xs sm:text-sm font-medium text-gray-700 mb-1'>
-                      Transaction ID *
-                    </label>
-                    <input
-                      type='text'
-                      value={actionData.transactionId}
-                      onChange={e =>
-                        setActionData({ ...actionData, transactionId: e.target.value })
-                      }
-                      placeholder='Enter transaction ID'
-                      className='w-full px-2 sm:px-3 py-1 sm:py-2 border rounded-md text-xs sm:text-sm'
-                      required
-                    />
-                  </div>
-                </>
-              )}
-
               {(currentAction === 'return' ||
                 currentAction === 'fail' ||
-                (currentAction === 'refund' && selectedOrder.orderType === 'SELLER_ORDER')) && (
+                currentAction === 'refund') && (
                 <div
                   className={`p-2 sm:p-3 rounded-md border ${
                     currentAction === 'refund'
