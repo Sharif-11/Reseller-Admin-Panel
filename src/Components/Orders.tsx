@@ -1182,16 +1182,14 @@ const AdminOrders = () => {
                       <div className='mt-1'>
                         <p className='text-sm font-medium'>Tracking Link:</p>
                         <div className='flex items-center mt-1'>
-                          <input
-                            type='text'
-                            value={selectedOrder.trackingUrl}
-                            onClick={() => {
-                              navigator.clipboard.writeText(selectedOrder.trackingUrl || '')
-                              navigate(`/tracking/${selectedOrder.trackingUrl}`)
-                            }}
-                            readOnly
-                            className='flex-1 px-2 py-1 border rounded-l text-sm'
-                          />
+                          <a
+                            href={selectedOrder.trackingUrl}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            className='hover:underline break-all'
+                          >
+                            {selectedOrder.trackingUrl}
+                          </a>
                           <button
                             onClick={() => {
                               navigator.clipboard.writeText(selectedOrder.trackingUrl || '')
