@@ -97,6 +97,22 @@ const AdminSupportTickets = () => {
     setCategory('')
     setPage(1)
   }
+  const handleDeleteOldTickets = async () => {
+    const days = prompt('পুরনো টিকেট মুছে ফেলার জন্য দিনের সংখ্যা লিখুন (ডিফল্ট ৭ দিন):', '৭')
+    if (days) {
+      try {
+        const { success, message } = await supportTicketApi.deleteOldTickets(parseInt(days))
+        if (success) {
+          alert(`Old tickets deleted successfully: ${message}`)
+          // Optionally, refetch tickets to reflect changes
+          setPage(1)
+        }
+      } catch (error) {
+        console.error('Error deleting old tickets:', error)
+        alert('Failed to delete old tickets. Please try again later.')
+      }
+    }
+  }
   const formatDate = (date: Date) => {
     const options: Intl.DateTimeFormatOptions = {
       year: 'numeric',
@@ -191,6 +207,12 @@ const AdminSupportTickets = () => {
 
         {/* Filter Actions */}
         <div className='flex flex-col sm:flex-row justify-end gap-2 mt-4'>
+          <button
+            onClick={handleDeleteOldTickets}
+            className='px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
+          >
+            পুরানো টিকিট ডিলিট করুন
+          </button>
           <button
             onClick={handleResetFilters}
             className='px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'

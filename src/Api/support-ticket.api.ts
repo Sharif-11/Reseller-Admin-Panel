@@ -198,6 +198,9 @@ class SupportTicketApi {
   }): Promise<ApiResponse<PaginatedTickets>> {
     return apiClient.get<PaginatedTickets>('support-tickets/admin/all', { params })
   }
+  public async deleteOldTickets(days: number) {
+    return apiClient.delete(`support-tickets?days=${days}`)
+  }
 }
 
 export default new SupportTicketApi()
