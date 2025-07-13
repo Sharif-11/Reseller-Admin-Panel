@@ -340,7 +340,7 @@ const AdminLayout = () => {
                       }`
                     }
                   >
-                    গ্রাহক ম্যানেজমেন্ট
+                    কাস্টমার ম্যানেজমেন্ট
                   </NavLink>
                   <NavLink
                     to='/dashboard/admin-management'
