@@ -345,15 +345,33 @@ const AddProductComplete = () => {
   }
 
   const addVariantValue = () => {
-    if (selectedVariantForValue && newVariantValue.trim()) {
+    const newVariant = newVariantValue.trim()
+    // here user may add multiple values for the same variant seperated by comma
+    if (newVariant && selectedVariantForValue) {
+      const valuesToAdd = newVariant
+        .split(',')
+        .map(value => value.trim())
+        .filter(value => value)
       setVariants(
         variants.map(v =>
-          v.name === selectedVariantForValue ? { ...v, values: [...v.values, newVariantValue] } : v
+          v.name === selectedVariantForValue
+            ? { ...v, values: [...new Set([...v.values, ...valuesToAdd])] }
+            : v
         )
       )
       setNewVariantValue('')
       setHasUnsavedChanges(true)
+      return
     }
+    // if (selectedVariantForValue && newVariantValue.trim()) {
+    //   setVariants(
+    //     variants.map(v =>
+    //       v.name === selectedVariantForValue ? { ...v, values: [...v.values, newVariantValue] } : v
+    //     )
+    //   )
+    //   setNewVariantValue('')
+    //   setHasUnsavedChanges(true)
+    // }
   }
 
   const removeVariantValue = (variantName: string, value: string) => {
