@@ -109,13 +109,17 @@ const SellerManagement = () => {
 
   const handleAddBalance = async () => {
     if (!selectedSeller || !amountToAdd) return
+    if (balanceNote.trim() === '') {
+      setError('টাকা যোগ করার কারণ উল্লেখ করুন')
+      return
+    }
     setProcessingBalance(true)
     try {
       const response = await transactionApi.updateUserBalance({
         sellerId: selectedSeller.userId,
         amount: Number(amountToAdd),
         transactionType: 'add',
-        reason: balanceNote || 'Balance added by admin',
+        reason: balanceNote,
       })
 
       if (response.success) {
@@ -134,13 +138,17 @@ const SellerManagement = () => {
 
   const handleDeductBalance = async () => {
     if (!selectedSeller || !amountToDeduct) return
+    if (balanceNote.trim() === '') {
+      setError('টাকা কাটার কারণ উল্লেখ করুন')
+      return
+    }
     setProcessingBalance(true)
     try {
       const response = await transactionApi.updateUserBalance({
         sellerId: selectedSeller.userId,
         amount: Number(amountToDeduct),
         transactionType: 'deduct',
-        reason: balanceNote || 'Balance deducted by admin',
+        reason: balanceNote,
       })
 
       if (response.success) {
@@ -926,7 +934,7 @@ const SellerManagement = () => {
             <div className='inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full'>
               <div className='bg-white px-6 py-5 sm:p-6'>
                 <div className='flex justify-between items-center'>
-                  <h3 className='text-2xl font-bold text-gray-900'>Update Balance</h3>
+                  <h3 className='text-2xl font-bold text-gray-900'>ব্যালেন্স আপডেট</h3>
                   <button
                     onClick={closeBalanceModal}
                     className='text-gray-400 hover:text-gray-500 focus:outline-none'
@@ -961,16 +969,25 @@ const SellerManagement = () => {
                           </div>
                           <input
                             type='number'
+                            min='0'
                             value={amountToAdd}
-                            onChange={e => setAmountToAdd(e.target.value)}
+                            onChange={e => {
+                              setAmountToAdd(e.target.value)
+                              setError('') // Clear error when user types
+                            }}
                             className='block w-full pl-8 pr-12 py-3 border border-green-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500'
                             placeholder='0.00'
                           />
                           <div className='absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none'>
-                            <span className='text-gray-500'>TK</span>
+                            <span className='text-gray-500'>টাকা</span>
                           </div>
                         </div>
                       </div>
+                      {error && amountToAdd && parseFloat(amountToAdd) <= 0 && (
+                        <p className='mt-1 text-sm text-red-600'>
+                          অনুগ্রহ করে ০ এর চেয়ে বড় সংখ্যা দিন
+                        </p>
+                      )}
                     </div>
 
                     {/* Deduct Balance Section */}
@@ -988,16 +1005,25 @@ const SellerManagement = () => {
                           </div>
                           <input
                             type='number'
+                            min='0'
                             value={amountToDeduct}
-                            onChange={e => setAmountToDeduct(e.target.value)}
+                            onChange={e => {
+                              setAmountToDeduct(e.target.value)
+                              setError('') // Clear error when user types
+                            }}
                             className='block w-full pl-8 pr-12 py-3 border border-red-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500'
                             placeholder='0.00'
                           />
                           <div className='absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none'>
-                            <span className='text-gray-500'>TK</span>
+                            <span className='text-gray-500'>টাকা</span>
                           </div>
                         </div>
                       </div>
+                      {error && amountToDeduct && parseFloat(amountToDeduct) <= 0 && (
+                        <p className='mt-1 text-sm text-red-600'>
+                          অনুগ্রহ করে ০ এর চেয়ে বড় সংখ্যা দিন
+                        </p>
+                      )}
                     </div>
 
                     {/* Note Section */}
@@ -1006,26 +1032,34 @@ const SellerManagement = () => {
                         htmlFor='balance-note'
                         className='block text-sm font-medium text-gray-700 mb-1'
                       >
-                        Transaction Note
+                        লেনদেনের নোট *
                       </label>
                       <textarea
                         id='balance-note'
                         name='balance-note'
                         rows={3}
                         className='block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
-                        placeholder='Reason for this transaction...'
+                        placeholder='এই লেনদেনের কারণ লিখুন...'
                         value={balanceNote}
                         onChange={e => setBalanceNote(e.target.value)}
                       />
                     </div>
+                    {/* Show backend error here */}
+                    {error && <p className='text-red-500 text-sm mt-2'>{error}</p>}
                   </div>
                 </div>
               </div>
 
               <div className='bg-gray-50 px-6 py-4 flex flex-col sm:flex-row-reverse sm:justify-start space-y-3 sm:space-y-0 sm:space-x-3 sm:space-x-reverse'>
-                {amountToAdd && (
+                {amountToAdd && parseFloat(amountToAdd) > 0 && (
                   <button
-                    onClick={handleAddBalance}
+                    onClick={() => {
+                      if (parseFloat(amountToAdd) <= 0) {
+                        setError('অনুগ্রহ করে ০ এর চেয়ে বড় সংখ্যা দিন')
+                      } else {
+                        handleAddBalance()
+                      }
+                    }}
                     disabled={processingBalance}
                     className='w-full sm:w-auto inline-flex justify-center items-center px-6 py-3 border border-transparent shadow-sm text-base font-medium rounded-xl text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-75'
                   >
@@ -1051,7 +1085,7 @@ const SellerManagement = () => {
                             d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
                           ></path>
                         </svg>
-                        Processing...
+                        প্রসেসিং...
                       </>
                     ) : (
                       <>
@@ -1061,9 +1095,15 @@ const SellerManagement = () => {
                     )}
                   </button>
                 )}
-                {amountToDeduct && (
+                {amountToDeduct && parseFloat(amountToDeduct) > 0 && (
                   <button
-                    onClick={handleDeductBalance}
+                    onClick={() => {
+                      if (parseFloat(amountToDeduct) <= 0) {
+                        setError('অনুগ্রহ করে ০ এর চেয়ে বড় সংখ্যা দিন')
+                      } else {
+                        handleDeductBalance()
+                      }
+                    }}
                     disabled={processingBalance}
                     className='w-full sm:w-auto inline-flex justify-center items-center px-6 py-3 border border-transparent shadow-sm text-base font-medium rounded-xl text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-75'
                   >
@@ -1089,7 +1129,7 @@ const SellerManagement = () => {
                             d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
                           ></path>
                         </svg>
-                        Processing...
+                        প্রসেসিং...
                       </>
                     ) : (
                       <>
