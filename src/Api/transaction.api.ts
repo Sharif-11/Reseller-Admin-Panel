@@ -18,5 +18,22 @@ class TransactionApi {
       },
     })
   }
+  public async updateUserBalance({
+    sellerId,
+    amount,
+    transactionType,
+    reason,
+  }: {
+    sellerId: string
+    amount: number
+    transactionType: 'add' | 'deduct'
+    reason?: string
+  }) {
+    return apiClient.patch(`/transactions/balance/${sellerId}`, {
+      amount,
+      transactionType,
+      reason,
+    })
+  }
 }
 export const transactionApi = new TransactionApi()
