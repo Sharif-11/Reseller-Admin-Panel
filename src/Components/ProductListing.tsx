@@ -1,4 +1,5 @@
 import { useFormik } from 'formik'
+import { ChevronDownIcon, ChevronRightIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import {
   FiChevronDown,
@@ -24,6 +25,12 @@ interface Shop {
   shopName: string
   shopLocation: string
 }
+interface Category {
+  categoryId: number
+  name: string
+  parentId: number | null
+  children?: Category[]
+}
 
 interface Product {
   productId: number
@@ -37,6 +44,11 @@ interface Product {
     imageUrl: string
   }[]
   shop: Shop
+  category?: {
+    // Add this if available from API
+    categoryId: number
+    name: string
+  }
 }
 
 interface ProductImage {
@@ -55,6 +67,7 @@ interface ProductUpdateData {
   basePrice?: number
   suggestedMaxPrice?: number
   videoUrl?: string | null
+  categoryId?: number
 }
 
 interface FilterOptions {
@@ -110,8 +123,13 @@ const ProductListing = () => {
   const [isUploading, setIsUploading] = useState(false)
   const [imageError, setImageError] = useState('')
   const [deletingImages, setDeletingImages] = useState<number[]>([]) // Track image IDs being deleted
+  const [categories, setCategories] = useState<Category[]>([])
+  const [expandedCategories, setExpandedCategories] = useState<number[]>([])
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false)
 
   // Form validation schema
+
+  // Formik form handler
   const validationSchema = Yup.object().shape({
     name: Yup.string()
       .required('Product name is required')
@@ -124,9 +142,12 @@ const ProductListing = () => {
     suggestedMaxPrice: Yup.number()
       .required('Suggested max price is required')
       .min(Yup.ref('basePrice'), 'Suggested max price must be greater than or equal to base price'),
+    categoryId: Yup.number() // Add this field
+      .required('Category selection is required')
+      .min(1, 'Please select a valid category'),
   })
 
-  // Formik form handler
+  // Formik form handler - add categoryId to initial values
   const formik = useFormik({
     initialValues: {
       name: '',
@@ -134,6 +155,7 @@ const ProductListing = () => {
       basePrice: 0,
       suggestedMaxPrice: 0,
       videoUrl: '',
+      categoryId: 0, // Add this field
     },
     validationSchema,
     onSubmit: async values => {
@@ -146,6 +168,7 @@ const ProductListing = () => {
           basePrice: values.basePrice,
           suggestedMaxPrice: values.suggestedMaxPrice,
           videoUrl: values.videoUrl || null,
+          categoryId: values.categoryId, // Add this field
         }
 
         const response = await productService.updateProduct(selectedProduct.productId, updateData)
@@ -252,6 +275,30 @@ const ProductListing = () => {
     }
     fetchImages()
   }, [showImageModal, selectedProduct])
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setIsLoadingCategories(true)
+      try {
+        const response = await shopApiService.getAllCategories({
+          subCategories: true,
+        })
+        if (response.success) {
+          setCategories((response?.data?.categories as Category[]) || [])
+        }
+      } catch (err) {
+        console.error('Failed to load categories')
+      } finally {
+        setIsLoadingCategories(false)
+      }
+    }
+
+    fetchCategories()
+  }, [])
+  const toggleExpand = (categoryId: number) => {
+    setExpandedCategories(prev =>
+      prev.includes(categoryId) ? prev.filter(id => id !== categoryId) : [...prev, categoryId]
+    )
+  }
 
   const togglePublishStatus = async (productId: number, currentStatus: boolean) => {
     try {
@@ -269,6 +316,63 @@ const ProductListing = () => {
     setProductToToggle({ productId, currentStatus })
     setShowPublishConfirm(true)
   }
+  const renderCategoryTree = (
+    categories: Category[],
+    parentId: number | null = null,
+    level = 0
+  ) => {
+    return categories
+      .filter(category => category.parentId === parentId)
+      .map(category => {
+        const hasChildren = categories.some(c => c.parentId === category.categoryId)
+        const isExpanded = expandedCategories.includes(category.categoryId)
+
+        return (
+          <div key={category.categoryId} className={`${level > 0 ? 'mr-4' : ''}`}>
+            <div
+              className={`flex items-center p-2 rounded-md cursor-pointer ${
+                formik.values.categoryId === category.categoryId
+                  ? 'bg-indigo-50'
+                  : 'hover:bg-gray-50'
+              }`}
+              onClick={() => formik.setFieldValue('categoryId', category.categoryId)}
+            >
+              {hasChildren && (
+                <button
+                  type='button'
+                  onClick={e => {
+                    e.stopPropagation()
+                    toggleExpand(category.categoryId)
+                  }}
+                  className='text-gray-500 hover:text-gray-700 mr-2'
+                >
+                  {isExpanded ? (
+                    <ChevronDownIcon className='h-4 w-4' />
+                  ) : (
+                    <ChevronRightIcon className='h-4 w-4' />
+                  )}
+                </button>
+              )}
+              {!hasChildren && <div className='w-6'></div>}
+              <span
+                className={`${
+                  formik.values.categoryId === category.categoryId
+                    ? 'font-semibold text-indigo-700'
+                    : ''
+                }`}
+              >
+                {category.name}
+              </span>
+            </div>
+            {hasChildren && isExpanded && (
+              <div className='border-r-2 border-gray-200 pr-2'>
+                {renderCategoryTree(categories, category.categoryId, level + 1)}
+              </div>
+            )}
+          </div>
+        )
+      })
+  }
 
   const openEditModal = (product: Product) => {
     setSelectedProduct(product)
@@ -278,6 +382,7 @@ const ProductListing = () => {
       basePrice: product.basePrice,
       suggestedMaxPrice: product.suggestedMaxPrice,
       videoUrl: product.videoUrl || '',
+      categoryId: product.category?.categoryId || 0, // Add this field
     })
     setIsEditModalOpen(true)
   }
@@ -799,6 +904,23 @@ const ProductListing = () => {
                   />
                   {formik.touched.name && formik.errors.name && (
                     <p className='mt-1 text-sm text-red-600'>{formik.errors.name}</p>
+                  )}
+                </div>
+                <div className='mb-4'>
+                  <label className='block text-sm font-medium text-gray-700 mb-1'>Category *</label>
+                  {isLoadingCategories ? (
+                    <div className='animate-pulse h-40 bg-gray-200 rounded-md'></div>
+                  ) : (
+                    <div className='border border-gray-300 rounded-md p-2 max-h-60 overflow-y-auto'>
+                      {categories.length > 0 ? (
+                        renderCategoryTree(categories)
+                      ) : (
+                        <p className='text-gray-500 text-center py-4'>No categories found</p>
+                      )}
+                    </div>
+                  )}
+                  {formik.touched.categoryId && formik.errors.categoryId && (
+                    <p className='mt-1 text-sm text-red-600'>{formik.errors.categoryId}</p>
                   )}
                 </div>
 
