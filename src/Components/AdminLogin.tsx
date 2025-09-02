@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import * as Yup from 'yup'
 import { authService } from '../Api/auth.api'
 import logo from '../assets/shopbd_logo.png'
+import { localStorageAvailable } from '../Axios/baseUrl'
 import { useAuth } from '../Hooks/useAuth'
 import { DASHBOARD_KEY } from './DashboardTracker'
 import Loading from './Loading'
@@ -97,6 +98,7 @@ const AdminLogin = () => {
 
       if (success && data?.token && data?.user) {
         setUser(data.user)
+        localStorageAvailable && localStorage.setItem('token', data.token)
         navigate('/dashboard')
       } else {
         setLoginError(message || 'লগইন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।')

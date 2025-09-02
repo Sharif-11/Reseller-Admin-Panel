@@ -271,6 +271,19 @@ const AdminLayout = () => {
                   >
                     ক্যাটাগরি ম্যানেজমেন্ট
                   </NavLink>
+                  <NavLink
+                    to='/dashboard/products/archive'
+                    onClick={handleNavClick}
+                    className={({ isActive }) =>
+                      `flex items-center px-2 py-1.5 rounded-lg text-xs transition-all ${
+                        isActive
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-indigo-100 hover:bg-indigo-600/30'
+                      }`
+                    }
+                  >
+                    প্রোডাক্টস আর্কাইভ
+                  </NavLink>
                 </div>
               )}
             </div>
@@ -634,7 +647,7 @@ const AdminLayout = () => {
                       }`
                     }
                   >
-                    কনফিগারেশন সেটিংস
+                    নোটিফিকেশন সেটিংস
                   </NavLink>
                   <NavLink
                     to='/dashboard/change-password'

@@ -106,6 +106,15 @@ class ProductService {
   async updateProduct(productId: number, data: ProductUpdateData): Promise<ApiResponse<Product>> {
     return apiClient.put(`products/${productId}`, data)
   }
+  async archiveProduct(productId: number): Promise<ApiResponse<Product>> {
+    return apiClient.patch(`products/${productId}/archive`)
+  }
+  async restoreProduct(productId: number): Promise<ApiResponse<Product>> {
+    return apiClient.patch(`products/${productId}/restore`)
+  }
+  async deleteProduct(productId: number): Promise<ApiResponse<void>> {
+    return apiClient.delete(`products/${productId}`)
+  }
 
   async togglePublishStatus(productId: number, publish: boolean): Promise<ApiResponse<Product>> {
     return apiClient.patch(`products/${productId}/publish`, { publish })
@@ -241,6 +250,22 @@ class ProductService {
     return apiClient.get('products/seller', {
       params: { ...filters, ...pagination },
     })
+  }
+  async getArchivedProducts({
+    search,
+    page,
+    limit,
+  }: {
+    search?: string
+    page?: number
+    limit?: number
+  }) {
+    const queryString = new URLSearchParams({
+      search: search || '',
+      page: String(page),
+      limit: String(limit),
+    }).toString()
+    return apiClient.get(`products/archived?${queryString}`)
   }
 }
 

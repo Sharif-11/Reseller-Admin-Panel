@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { FaCopy, FaSearch, FaSpinner } from 'react-icons/fa'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import {
   orderApi,
@@ -97,7 +97,7 @@ const AdminOrders = () => {
   const [fetching, setFetching] = useState(false)
   const [previewProductImage, setPreviewProductImage] = useState<string | null>(null)
   const [previewProductName, setPreviewProductName] = useState<string>('')
-  const navigate = useNavigate()
+
   const [pagination, setPagination] = useState<Record<string, PaginationState>>({
     pending: { currentPage: 1, totalPages: 1, totalOrders: 0, pageSize: 10 },
     confirmed: { currentPage: 1, totalPages: 1, totalOrders: 0, pageSize: 10 },
@@ -578,7 +578,8 @@ const AdminOrders = () => {
                           readOnly
                           onClick={() => {
                             navigator.clipboard.writeText(order.trackingUrl || '')
-                            navigate(`/tracking/${order.trackingUrl}`)
+                            // tracking link is a external link should be opened in new tab
+                            window.open(order.trackingUrl!)
                           }}
                           className='text-xs p-1 border rounded flex-1 w-24 truncate'
                         />

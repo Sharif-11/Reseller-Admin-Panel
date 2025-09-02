@@ -98,7 +98,7 @@ const AdminSupportTickets = () => {
     setPage(1)
   }
   const handleDeleteOldTickets = async () => {
-    const days = prompt('পুরনো টিকেট মুছে ফেলার জন্য দিনের সংখ্যা লিখুন (ডিফল্ট ৭ দিন):', '৭')
+    const days = prompt('পুরনো টিকেট মুছে ফেলার জন্য দিনের সংখ্যা লিখুন (ডিফল্ট ৭ দিন):', '7')
     if (days) {
       try {
         const { success, message } = await supportTicketApi.deleteOldTickets(parseInt(days))

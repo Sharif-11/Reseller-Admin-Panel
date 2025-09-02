@@ -2,6 +2,7 @@ import { useFormik } from 'formik'
 import { ChevronDownIcon, ChevronRightIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import {
+  FiArchive,
   FiChevronDown,
   FiChevronRight,
   FiEdit,
@@ -10,6 +11,7 @@ import {
   FiImage,
   FiMapPin,
   FiPlus,
+  FiRefreshCw,
   FiSearch,
   FiTrash2,
   FiX,
@@ -40,6 +42,7 @@ interface Product {
   suggestedMaxPrice: number
   videoUrl: string | null
   published: boolean
+  archived: boolean
   ProductImage: {
     imageUrl: string
   }[]
@@ -126,6 +129,17 @@ const ProductListing = () => {
   const [categories, setCategories] = useState<Category[]>([])
   const [expandedCategories, setExpandedCategories] = useState<number[]>([])
   const [isLoadingCategories, setIsLoadingCategories] = useState(false)
+
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false)
+  const [productToArchive, setProductToArchive] = useState<number | null>(null)
+  const [productToDelete, setProductToDelete] = useState<number | null>(null)
+  const [productToRestore, setProductToRestore] = useState<number | null>(null)
+  const [archivingProduct, setArchivingProduct] = useState<number | null>(null)
+  const [restoringProduct, setRestoringProduct] = useState<number | null>(null)
+  const [deletingProduct, setDeletingProduct] = useState<number | null>(null)
+  const [apiError, setApiError] = useState<string | null>(null)
 
   // Form validation schema
 
@@ -294,6 +308,7 @@ const ProductListing = () => {
 
     fetchCategories()
   }, [])
+
   const toggleExpand = (categoryId: number) => {
     setExpandedCategories(prev =>
       prev.includes(categoryId) ? prev.filter(id => id !== categoryId) : [...prev, categoryId]
@@ -414,6 +429,78 @@ const ProductListing = () => {
       setVariants([...variants, { name: newVariantName, values: [] }])
       setNewVariantName('')
     }
+  }
+  const archiveProduct = async (productId: number) => {
+    try {
+      setArchivingProduct(productId)
+      const { success, message } = await productService.archiveProduct(productId)
+      if (success) {
+        setProducts(products.map(p => (p.productId === productId ? { ...p, archived: true } : p)))
+        setShowArchiveConfirm(false)
+        setProductToArchive(null)
+      } else {
+        setApiError(message || 'Failed to archive product')
+      }
+    } catch (error) {
+      setApiError('Failed to archive product')
+      console.error('Failed to archive product', error)
+    } finally {
+      setArchivingProduct(null)
+    }
+  }
+
+  const restoreProduct = async (productId: number) => {
+    try {
+      setRestoringProduct(productId)
+      const { success, message } = await productService.restoreProduct(productId)
+      if (success) {
+        setProducts(products.map(p => (p.productId === productId ? { ...p, archived: false } : p)))
+        setShowRestoreConfirm(false)
+        setProductToRestore(null)
+      } else {
+        setApiError(message || 'Failed to restore product')
+      }
+    } catch (error) {
+      setApiError('Failed to restore product')
+      console.error('Failed to restore product', error)
+    } finally {
+      setRestoringProduct(null)
+    }
+  }
+
+  const deleteProduct = async (productId: number) => {
+    try {
+      setApiError(null)
+      setDeletingProduct(productId)
+      const { success, message } = await productService.deleteProduct(productId)
+      if (success) {
+        setProducts(products.filter(p => p.productId !== productId))
+        setShowDeleteConfirm(false)
+        setProductToDelete(null)
+      } else {
+        setApiError(message || 'Failed to delete product')
+      }
+    } catch (error) {
+      setApiError('Failed to delete product')
+      console.error('Failed to delete product', error)
+    } finally {
+      setDeletingProduct(null)
+    }
+  }
+
+  const confirmArchive = (productId: number) => {
+    setProductToArchive(productId)
+    setShowArchiveConfirm(true)
+  }
+
+  const confirmRestore = (productId: number) => {
+    setProductToRestore(productId)
+    setShowRestoreConfirm(true)
+  }
+
+  const confirmDelete = (productId: number) => {
+    setProductToDelete(productId)
+    setShowDeleteConfirm(true)
   }
 
   const removeVariant = (variantName: string) => {
@@ -794,6 +881,59 @@ const ProductListing = () => {
                     >
                       <FiPlus />
                     </button>
+                    {product.archived ? (
+                      <button
+                        onClick={() => confirmRestore(product.productId)}
+                        disabled={restoringProduct === product.productId}
+                        className={`p-2 rounded-full ${
+                          restoringProduct === product.productId
+                            ? 'bg-gray-300 text-gray-600'
+                            : 'bg-yellow-100 text-yellow-700 hover:opacity-80'
+                        }`}
+                        title='Restore Product'
+                      >
+                        {restoringProduct === product.productId ? (
+                          <div className='animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-yellow-600'></div>
+                        ) : (
+                          <FiRefreshCw size={16} />
+                        )}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => confirmArchive(product.productId)}
+                        disabled={archivingProduct === product.productId}
+                        className={`p-2 rounded-full ${
+                          archivingProduct === product.productId
+                            ? 'bg-gray-300 text-gray-600'
+                            : 'bg-gray-100 text-gray-700 hover:opacity-80'
+                        }`}
+                        title='Archive Product'
+                      >
+                        {archivingProduct === product.productId ? (
+                          <div className='animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-gray-600'></div>
+                        ) : (
+                          <FiArchive size={16} />
+                        )}
+                      </button>
+                    )}
+
+                    {/* Delete Button */}
+                    <button
+                      onClick={() => confirmDelete(product.productId)}
+                      disabled={deletingProduct === product.productId}
+                      className={`p-2 rounded-full ${
+                        deletingProduct === product.productId
+                          ? 'bg-gray-300 text-gray-600'
+                          : 'bg-red-100 text-red-700 hover:opacity-80'
+                      }`}
+                      title='Delete Product'
+                    >
+                      {deletingProduct === product.productId ? (
+                        <div className='animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-red-600'></div>
+                      ) : (
+                        <FiTrash2 size={16} />
+                      )}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -808,22 +948,143 @@ const ProductListing = () => {
           )}
 
           {/* Pagination */}
+          {/* Pagination */}
           {pagination.totalPages > 1 && (
             <div className='mt-8 flex justify-center'>
-              <nav className='flex items-center space-x-2'>
-                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(page => (
-                  <button
-                    key={page}
-                    onClick={() => setPagination(prev => ({ ...prev, page }))}
-                    className={`px-4 py-2 rounded-md ${
-                      pagination.page === page
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-white text-gray-700 hover:bg-gray-100'
-                    }`}
+              <nav className='flex items-center space-x-1 sm:space-x-2'>
+                {/* Previous Button */}
+                <button
+                  onClick={() =>
+                    setPagination(prev => ({
+                      ...prev,
+                      page: Math.max(1, prev.page - 1),
+                    }))
+                  }
+                  disabled={pagination.page === 1}
+                  className={`p-2 rounded-md ${
+                    pagination.page === 1
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-white text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <svg
+                    className='w-4 h-4 sm:w-5 sm:h-5'
+                    fill='none'
+                    stroke='currentColor'
+                    viewBox='0 0 24 24'
                   >
-                    {page}
-                  </button>
-                ))}
+                    <path
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      strokeWidth={2}
+                      d='M15 19l-7-7 7-7'
+                    />
+                  </svg>
+                </button>
+
+                {/* Page Numbers - Show 3 pages on all devices */}
+                <div className='flex items-center space-x-1 sm:space-x-2'>
+                  {/* Show first page with ellipsis if needed */}
+                  {pagination.page > 2 && pagination.totalPages > 3 && (
+                    <>
+                      <button
+                        onClick={() => setPagination(prev => ({ ...prev, page: 1 }))}
+                        className={`px-3 py-2 rounded-md text-sm ${
+                          1 === pagination.page
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-white text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        1
+                      </button>
+                      {pagination.page > 3 && <span className='px-1 text-gray-500'>...</span>}
+                    </>
+                  )}
+
+                  {/* Always show 3 pages around current page */}
+                  {Array.from({ length: Math.min(3, pagination.totalPages) }, (_, i) => {
+                    let pageNum
+
+                    if (pagination.totalPages <= 3) {
+                      // Show all pages if total pages is 3 or less
+                      pageNum = i + 1
+                    } else if (pagination.page === 1) {
+                      // If on first page, show pages 1, 2, 3
+                      pageNum = i + 1
+                    } else if (pagination.page === pagination.totalPages) {
+                      // If on last page, show last 3 pages
+                      pageNum = pagination.totalPages - 2 + i
+                    } else {
+                      // Otherwise show previous, current, and next page
+                      pageNum = pagination.page - 1 + i
+                    }
+
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setPagination(prev => ({ ...prev, page: pageNum }))}
+                        className={`px-3 py-2 rounded-md text-sm ${
+                          pageNum === pagination.page
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-white text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    )
+                  })}
+
+                  {/* Show last page with ellipsis if needed */}
+                  {pagination.page < pagination.totalPages - 1 && pagination.totalPages > 3 && (
+                    <>
+                      {pagination.page < pagination.totalPages - 2 && (
+                        <span className='px-1 text-gray-500'>...</span>
+                      )}
+                      <button
+                        onClick={() =>
+                          setPagination(prev => ({ ...prev, page: pagination.totalPages }))
+                        }
+                        className={`px-3 py-2 rounded-md text-sm ${
+                          pagination.totalPages === pagination.page
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-white text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        {pagination.totalPages}
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {/* Next Button */}
+                <button
+                  onClick={() =>
+                    setPagination(prev => ({
+                      ...prev,
+                      page: Math.min(pagination.totalPages, prev.page + 1),
+                    }))
+                  }
+                  disabled={pagination.page === pagination.totalPages}
+                  className={`p-2 rounded-md ${
+                    pagination.page === pagination.totalPages
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-white text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <svg
+                    className='w-4 h-4 sm:w-5 sm:h-5'
+                    fill='none'
+                    stroke='currentColor'
+                    viewBox='0 0 24 24'
+                  >
+                    <path
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      strokeWidth={2}
+                      d='M9 5l7 7-7 7'
+                    />
+                  </svg>
+                </button>
               </nav>
             </div>
           )}
@@ -1345,6 +1606,106 @@ const ProductListing = () => {
                   className='px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50'
                 >
                   {isUploading ? 'Uploading...' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Archive Confirmation Modal */}
+      {showArchiveConfirm && productToArchive && (
+        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50'>
+          <div className='bg-white rounded-lg shadow-xl w-full max-w-md'>
+            <div className='p-6'>
+              <h3 className='text-lg font-medium text-gray-900 mb-4'>আর্কাইভ প্রোডাক্ট</h3>
+              <p className='text-gray-600 mb-6'>
+                আপনি কি নিশ্চিত যে আপনি এই পণ্যটি আর্কাইভ করতে চান? এটি তালিকা থেকে লুকানো থাকবে
+                কিন্তু পরে পুনরুদ্ধার করা যাবে।
+              </p>
+              {/* we need to render the api error */}
+              {apiError && (
+                <div className='mb-4 p-3 bg-red-100 text-red-700 rounded-md'>{apiError}</div>
+              )}
+              <div className='flex justify-end space-x-3'>
+                <button
+                  onClick={() => setShowArchiveConfirm(false)}
+                  className='px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50'
+                >
+                  ক্যানসেল
+                </button>
+                <button
+                  onClick={() => archiveProduct(productToArchive)}
+                  disabled={archivingProduct === productToArchive}
+                  className='px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50'
+                >
+                  {archivingProduct === productToArchive ? 'আর্কাইভ করা হচ্ছে...' : 'আর্কাইভ করুন'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Restore Confirmation Modal */}
+      {showRestoreConfirm && productToRestore && (
+        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50'>
+          <div className='bg-white rounded-lg shadow-xl w-full max-w-md'>
+            <div className='p-6'>
+              <h3 className='text-lg font-medium text-gray-900 mb-4'>রিস্টোর প্রোডাক্ট</h3>
+              <p className='text-gray-600 mb-6'>
+                আপনি কি নিশ্চিত যে আপনি এই পণ্যটি রিস্টোর করতে চান? এটি আবার তালিকায় দৃশ্যমান হবে।
+              </p>
+              {/* we need to render the api error */}
+              {apiError && (
+                <div className='mb-4 p-3 bg-red-100 text-red-700 rounded-md'>{apiError}</div>
+              )}
+              <div className='flex justify-end space-x-3'>
+                <button
+                  onClick={() => setShowRestoreConfirm(false)}
+                  className='px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50'
+                >
+                  ক্যানসেল
+                </button>
+                <button
+                  onClick={() => restoreProduct(productToRestore)}
+                  disabled={restoringProduct === productToRestore}
+                  className='px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50'
+                >
+                  {restoringProduct === productToRestore ? 'রিস্টোর করা হচ্ছে...' : 'রিস্টোর করুন'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && productToDelete && (
+        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50'>
+          <div className='bg-white rounded-lg shadow-xl w-full max-w-md'>
+            <div className='p-6'>
+              <h3 className='text-lg font-medium text-gray-900 mb-4'>ডিলিট প্রোডাক্ট</h3>
+              <p className='text-gray-600 mb-6'>
+                আপনি কি নিশ্চিত যে আপনি এই পণ্যটি ডিলিট করতে চান? পণ্যটি এবং এর সমস্ত তথ্য
+                স্থায়ীভাবে ডিলিট হবে।
+              </p>
+              {/* we need to render the api error */}
+              {apiError && (
+                <div className='mb-4 p-3 bg-red-100 text-red-700 rounded-md'>{apiError}</div>
+              )}
+              <div className='flex justify-end space-x-3'>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className='px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50'
+                >
+                  ক্যানসেল
+                </button>
+                <button
+                  onClick={() => deleteProduct(productToDelete)}
+                  disabled={deletingProduct === productToDelete}
+                  className='px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50'
+                >
+                  {deletingProduct === productToDelete ? 'ডিলিট করা হচ্ছে...' : 'ডিলিট করুন'}
                 </button>
               </div>
             </div>

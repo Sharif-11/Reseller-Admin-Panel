@@ -12,6 +12,7 @@ import CategoryManagement from './Components/CategoryManagement'
 import ChangePassword from './Components/ChangePassword'
 import CommissionTable from './Components/CommissionTable'
 import ConfigurationSettings from './Components/Configuration'
+import CustomerManagement from './Components/CustomerManagement'
 import DashboardStats from './Components/Dashboard'
 import DashboardTracker from './Components/DashboardTracker'
 import ForgotPassword from './Components/ForgotPassword'
@@ -30,7 +31,7 @@ import SystemWalletPage from './Components/SystemWallet'
 import AdminWithdrawRequests from './Components/WithdrawRequest'
 import { UserProvider } from './Context/userContext'
 import './index.css'
-import CustomerManagement from './Components/CustomerManagement'
+import ArchivedProducts from './Components/ArchivedProducts'
 
 const queryClient = new QueryClient()
 
@@ -75,6 +76,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path='shops' element={<ShopManagement />} />
               <Route path='add-product' element={<AddProduct />} />
               <Route path='products' element={<ProductListing />} />
+              <Route path='products/archive' element={<ArchivedProducts />} />
               <Route path='categories' element={<CategoryManagement />} />
               <Route path='withdraw-requests' element={<AdminWithdrawRequests />} />
               <Route path='balance-statement' element={<AdminBalanceStatement />} />

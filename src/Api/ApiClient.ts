@@ -6,7 +6,7 @@ import type {
   AxiosResponse,
 } from 'axios'
 import axios from 'axios'
-import { baseURL } from '../Axios/baseUrl'
+import { baseURL, localStorageAvailable } from '../Axios/baseUrl'
 
 export type ApiResponse<T = any> = {
   success: boolean
@@ -15,6 +15,12 @@ export type ApiResponse<T = any> = {
   data?: T
   error?: any
   response?: any
+  pagination?: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
 }
 
 export type UploadProgressHandler = (progressEvent: AxiosProgressEvent) => void
@@ -32,6 +38,13 @@ class ApiClient {
         Accept: 'application/json',
       },
       ...config,
+    })
+    this.instance.interceptors.request.use(config => {
+      const token = localStorageAvailable ? localStorage.getItem('token') : null
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`
+      }
+      return config
     })
 
     // this.setupInterceptors()
