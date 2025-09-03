@@ -1,10 +1,13 @@
+import axios from 'axios'
 import { useFormik } from 'formik'
 import { ChevronDownIcon, ChevronRightIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import {
   FiArchive,
+  FiCheck,
   FiChevronDown,
   FiChevronRight,
+  FiCopy,
   FiEdit,
   FiEye,
   FiEyeOff,
@@ -20,6 +23,7 @@ import * as Yup from 'yup'
 import { ftpService } from '../Api/ftp.api'
 import { productService } from '../Api/product.api'
 import { shopApiService } from '../Api/shop.api'
+import { frontendUrl } from '../Axios/baseUrl'
 import './ProductSlider.css'
 
 interface Shop {
@@ -43,6 +47,7 @@ interface Product {
   videoUrl: string | null
   published: boolean
   archived: boolean
+  linkCopied?: boolean
   ProductImage: {
     imageUrl: string
   }[]
@@ -313,6 +318,25 @@ const ProductListing = () => {
     setExpandedCategories(prev =>
       prev.includes(categoryId) ? prev.filter(id => id !== categoryId) : [...prev, categoryId]
     )
+  }
+  const shortenUrl = async (originalUrl: string): Promise<string> => {
+    try {
+      const encodedUrl = encodeURIComponent(originalUrl)
+      const apiUrl = `https://tinyurl.com/api-create.php?url=${encodedUrl}`
+
+      const response = await axios.get(apiUrl, {
+        timeout: 5000,
+      })
+
+      if (response.status === 200 && response.data && response.data.startsWith('http')) {
+        return response.data
+      }
+
+      throw new Error('Invalid response from tinyurl API')
+    } catch (error) {
+      console.error('URL shortening failed, returning original URL:', error)
+      return originalUrl
+    }
   }
 
   const togglePublishStatus = async (productId: number, currentStatus: boolean) => {
@@ -852,6 +876,59 @@ const ProductListing = () => {
                   <p className='text-lg font-semibold text-indigo-600 mt-1'>
                     {product.basePrice} Tk
                   </p>
+                  <div className='mt-2'>
+                    <p className='text-xs text-gray-500 mb-1'>Shareable Link:</p>
+                    <div className='flex items-center bg-gray-100 rounded-md p-1'>
+                      <input
+                        type='text'
+                        readOnly
+                        value={`${frontendUrl}/products/${product.productId}/order`}
+                        onClick={async e => {
+                          const shortened = await shortenUrl(
+                            `${frontendUrl}/products/${product.productId}/order`
+                          )
+                          e.currentTarget.value = shortened
+                          e.currentTarget.select()
+                        }}
+                        className='text-xs bg-transparent border-none flex-grow px-2 truncate'
+                      />
+                      <button
+                        onClick={async () => {
+                          navigator.clipboard
+                            .writeText(
+                              await shortenUrl(`${frontendUrl}/products/${product.productId}/order`)
+                            )
+                            .then(() => {
+                              // Set copied state for this product
+                              setProducts(
+                                products.map(p =>
+                                  p.productId === product.productId ? { ...p, linkCopied: true } : p
+                                )
+                              )
+
+                              // Reset after 2 seconds
+                              setTimeout(() => {
+                                setProducts(
+                                  products.map(p =>
+                                    p.productId === product.productId
+                                      ? { ...p, linkCopied: false }
+                                      : p
+                                  )
+                                )
+                              }, 2000)
+                            })
+                        }}
+                        className='p-1 text-gray-500 hover:text-indigo-600 transition-colors'
+                        title='Copy link'
+                      >
+                        {product.linkCopied ? (
+                          <FiCheck className='text-green-500' size={14} />
+                        ) : (
+                          <FiCopy size={14} />
+                        )}
+                      </button>
+                    </div>
+                  </div>
                   <div className='mt-3 flex justify-between space-x-2'>
                     <button
                       onClick={() => confirmTogglePublish(product.productId, product.published)}
