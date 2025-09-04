@@ -885,7 +885,7 @@ const ProductListing = () => {
                         value={`${frontendUrl}/products/${product.productId}/order`}
                         onClick={async e => {
                           const shortened = await shortenUrl(
-                            `${frontendUrl}/products/${product.productId}/order`
+                            `${frontendUrl}/products/${product.productId}/order?sellerPrice=${product.suggestedMaxPrice}&referralCode=123`
                           )
                           e.currentTarget.value = shortened
                           e.currentTarget.select()
@@ -896,7 +896,9 @@ const ProductListing = () => {
                         onClick={async () => {
                           navigator.clipboard
                             .writeText(
-                              await shortenUrl(`${frontendUrl}/products/${product.productId}/order`)
+                              await shortenUrl(
+                                `${frontendUrl}/products/${product.productId}/order?sellerPrice=${product.suggestedMaxPrice}&referralCode=123`
+                              )
                             )
                             .then(() => {
                               // Set copied state for this product
