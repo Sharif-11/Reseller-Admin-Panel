@@ -31,17 +31,19 @@ const CategoryManagement = () => {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [parentCategory, setParentCategory] = useState<number | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
   const itemsPerPage = 10
 
   // Validation Schema
+  // Update the validation schema
   const categoryValidationSchema = Yup.object().shape({
     name: Yup.string()
       .required('Category name is required')
       .min(3, 'Category name must be at least 3 characters'),
     description: Yup.string(),
-    categoryIcon: Yup.string().url('Please enter a valid URL'),
-    priority: Yup.number().default(100),
+    categoryIcon: Yup.string().nullable(), // Make optional
+    priority: Yup.number().nullable(), // Make optional
   })
 
   const formik = useFormik({
@@ -53,52 +55,60 @@ const CategoryManagement = () => {
       priority: null as number | null,
     },
     validationSchema: categoryValidationSchema,
+    // Update the formik onSubmit function
     onSubmit: async values => {
       setModalError(null)
+      setIsUploading(true)
+
       try {
-        let response
-        if (editingCategory) {
-          const { success, message } = await shopApiService.updateCategory(
-            editingCategory.categoryId,
-            {
-              name: values.name,
-              description: values.description,
-              categoryIcon: values.categoryIcon,
-              parentId: values.parentId || undefined,
-              priority: values.priority ? values.priority : null,
-            }
-          )
-          response = { success, message }
-          if (success) {
-            setSuccess('Category updated successfully')
+        let iconUrl = values.categoryIcon
+
+        // Upload image only if a new file was selected
+        if (selectedFile) {
+          const uploadResponse = await ftpService.uploadFile(selectedFile)
+          if (uploadResponse.success) {
+            iconUrl = uploadResponse.data?.publicUrl || ''
           } else {
-            setModalError(message || 'Update failed')
-          }
-        } else {
-          const { success, message } = await shopApiService.createCategory({
-            name: values.name,
-            description: values.description,
-            categoryIcon: values.categoryIcon,
-            parentId: parentCategory || values.parentId || undefined,
-            priority: values.priority,
-          })
-          response = { success, message }
-          if (success) {
-            setSuccess('Category created successfully')
-          } else {
-            setModalError(message || 'Creation failed')
+            setModalError(uploadResponse.message || 'Image upload failed')
+            setIsUploading(false)
+            return
           }
         }
 
+        let response
+        if (editingCategory) {
+          response = await shopApiService.updateCategory(editingCategory.categoryId, {
+            name: values.name,
+            description: values.description,
+            categoryIcon: iconUrl,
+            parentId: values.parentId || undefined,
+            priority: values.priority || null, // Make optional
+          })
+        } else {
+          response = await shopApiService.createCategory({
+            name: values.name,
+            description: values.description,
+            categoryIcon: iconUrl,
+            parentId: parentCategory || values.parentId || undefined,
+            priority: values.priority || null, // Make optional
+          })
+        }
+
         if (response.success) {
+          setSuccess(
+            editingCategory ? 'Category updated successfully' : 'Category created successfully'
+          )
           fetchCategories()
           setIsModalOpen(false)
           setParentCategory(null)
+          setSelectedFile(null)
         } else {
           setModalError(response.message || 'Operation failed')
         }
       } catch (error) {
         setModalError('Operation failed')
+      } finally {
+        setIsUploading(false)
       }
     },
   })
@@ -111,11 +121,11 @@ const CategoryManagement = () => {
   }
 
   // Handle image upload
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0]
 
-      // Set preview image
+      // Set preview image only (no upload)
       const reader = new FileReader()
       reader.onload = event => {
         if (event.target?.result) {
@@ -124,26 +134,14 @@ const CategoryManagement = () => {
       }
       reader.readAsDataURL(file)
 
-      // Upload to FTP
-      setIsUploading(true)
-      try {
-        const { success, data, message } = await ftpService.uploadFile(file)
-        if (success) {
-          formik.setFieldValue('categoryIcon', data?.publicUrl)
-          setPreviewImage(data?.publicUrl || null)
-        } else {
-          setModalError(message || 'Image upload failed')
-        }
-      } catch (error) {
-        setModalError('Image upload failed')
-      } finally {
-        setIsUploading(false)
-      }
+      // Store the file for later upload
+      setSelectedFile(file)
     }
   }
   // Add this function inside the component, after the handleImageUpload function
   const handleDeleteImage = () => {
     setPreviewImage(null)
+    setSelectedFile(null)
     formik.setFieldValue('categoryIcon', '')
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
@@ -470,10 +468,11 @@ const CategoryManagement = () => {
                     <label className='block text-sm font-medium text-gray-700 mb-1'>
                       Category Icon
                     </label>
+
                     <input
                       type='file'
                       ref={fileInputRef}
-                      onChange={handleImageUpload}
+                      onChange={handleImageSelect} // Changed from handleImageUpload
                       accept='image/*'
                       className='hidden'
                     />
@@ -567,7 +566,10 @@ const CategoryManagement = () => {
                       min='0'
                       className='mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500'
                       value={formik.values.priority || ''}
-                      onChange={formik.handleChange}
+                      onChange={e => {
+                        const value = e.target.value
+                        formik.setFieldValue('priority', value === '' ? null : Number(value))
+                      }}
                       onBlur={formik.handleBlur}
                     />
                   </div>
