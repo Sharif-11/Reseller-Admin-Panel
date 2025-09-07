@@ -50,7 +50,7 @@ const CategoryManagement = () => {
       description: '',
       categoryIcon: '',
       parentId: null as number | null,
-      priority: 100,
+      priority: null as number | null,
     },
     validationSchema: categoryValidationSchema,
     onSubmit: async values => {
@@ -65,7 +65,7 @@ const CategoryManagement = () => {
               description: values.description,
               categoryIcon: values.categoryIcon,
               parentId: values.parentId || undefined,
-              priority: values.priority,
+              priority: values.priority ? values.priority : null,
             }
           )
           response = { success, message }
@@ -212,7 +212,7 @@ const CategoryManagement = () => {
       description: category.description || '',
       categoryIcon: category.categoryIcon || '',
       parentId: category.parentId || null,
-      priority: category.priority || 100,
+      priority: category.priority || null,
     })
     setPreviewImage(category.categoryIcon || null)
     setModalError(null)
@@ -558,7 +558,7 @@ const CategoryManagement = () => {
                   </div>
                   <div>
                     <label htmlFor='priority' className='block text-sm font-medium text-gray-700'>
-                      Priority
+                      Serial Number
                     </label>
                     <input
                       id='priority'
@@ -566,7 +566,7 @@ const CategoryManagement = () => {
                       type='number'
                       min='0'
                       className='mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500'
-                      value={formik.values.priority}
+                      value={formik.values.priority || ''}
                       onChange={formik.handleChange}
                       onBlur={formik.handleBlur}
                     />

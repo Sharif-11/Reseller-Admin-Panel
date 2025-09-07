@@ -106,7 +106,7 @@ class ShopApiService {
     categoryIcon?: string
     isActive?: boolean
     parentId?: number
-    priority?: number
+    priority: number | null
   }): Promise<ApiResponse<Category>> {
     return apiClient.post<Category>('categories', {
       name: categoryData.name,
@@ -158,7 +158,7 @@ class ShopApiService {
       description?: string
       categoryIcon?: string
       parentId?: number
-      priority?: number
+      priority: number | null
     }
   ): Promise<ApiResponse<Category>> {
     return apiClient.put<Category>(`categories/${categoryId}`, values)

@@ -63,6 +63,7 @@ const AddProductComplete = () => {
   const [imageUploads, setImageUploads] = useState<ImageUpload[]>([])
   const [uploadProgress, setUploadProgress] = useState(0)
   const [imageError, setImageError] = useState('')
+  const [categorySearch, setCategorySearch] = useState('')
 
   // Form validation schema
   const validationSchema = Yup.object().shape({
@@ -204,7 +205,39 @@ const AddProductComplete = () => {
       setHasUnsavedChanges(true)
     }
   }
+  const filterCategoriesBySearch = (categories: Category[], searchTerm: string): Category[] => {
+    if (!searchTerm.trim()) return categories
 
+    const filtered: Category[] = []
+    const searchLower = searchTerm.toLowerCase()
+
+    const hasMatchingName = (category: Category): boolean => {
+      return category.name.toLowerCase().includes(searchLower)
+    }
+
+    const addCategoryWithParents = (category: Category, allCats: Category[]) => {
+      // Add current category if not already added
+      if (!filtered.some(c => c.categoryId === category.categoryId)) {
+        filtered.push(category)
+      }
+
+      // Recursively add all parents
+      if (category.parentId) {
+        const parent = allCats.find(c => c.categoryId === category.parentId)
+        if (parent) {
+          addCategoryWithParents(parent, allCats)
+        }
+      }
+    }
+
+    categories.forEach(category => {
+      if (hasMatchingName(category)) {
+        addCategoryWithParents(category, categories)
+      }
+    })
+
+    return filtered
+  }
   // Check for draft on component mount
   useEffect(() => {
     loadDraft()
@@ -277,10 +310,14 @@ const AddProductComplete = () => {
     parentId: number | null = null,
     level = 0
   ) => {
-    return categories
+    const filteredCategories = categorySearch.trim()
+      ? filterCategoriesBySearch(categories, categorySearch)
+      : categories
+
+    return filteredCategories
       .filter(category => category.parentId === parentId)
       .map(category => {
-        const hasChildren = categories.some(c => c.parentId === category.categoryId)
+        const hasChildren = filteredCategories.some(c => c.parentId === category.categoryId)
         const isExpanded = expandedCategories.includes(category.categoryId)
 
         return (
@@ -322,7 +359,7 @@ const AddProductComplete = () => {
             </div>
             {hasChildren && isExpanded && (
               <div className='border-r-2 border-gray-200 pr-2'>
-                {renderCategoryTree(categories, category.categoryId, level + 1)}
+                {renderCategoryTree(filteredCategories, category.categoryId, level + 1)}
               </div>
             )}
           </div>
@@ -527,12 +564,32 @@ const AddProductComplete = () => {
               {isLoadingCategories ? (
                 <div className='animate-pulse h-40 bg-gray-200 rounded-md'></div>
               ) : (
-                <div className='border border-gray-300 rounded-md p-2 max-h-60 overflow-y-auto'>
-                  {categories.length > 0 ? (
-                    renderCategoryTree(categories)
-                  ) : (
-                    <p className='text-gray-500 text-center py-4'>No categories found</p>
-                  )}
+                <div className='space-y-2'>
+                  {/* Search input for categories */}
+                  <div className='mb-2'>
+                    <input
+                      type='text'
+                      placeholder='Search categories...'
+                      value={categorySearch}
+                      onChange={e => setCategorySearch(e.target.value)}
+                      className='block w-full border rounded-md py-2 px-3 focus:outline-none border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+                    />
+                  </div>
+
+                  <div className='border border-gray-300 rounded-md p-2 max-h-60 overflow-y-auto'>
+                    {categories.length > 0 ? (
+                      renderCategoryTree(categories)
+                    ) : (
+                      <p className='text-gray-500 text-center py-4'>No categories found</p>
+                    )}
+
+                    {categorySearch.trim() &&
+                      filterCategoriesBySearch(categories, categorySearch).length === 0 && (
+                        <p className='text-gray-500 text-center py-4'>
+                          No categories found matching "{categorySearch}"
+                        </p>
+                      )}
+                  </div>
                 </div>
               )}
               {formik.touched.categoryId && formik.errors.categoryId && (
