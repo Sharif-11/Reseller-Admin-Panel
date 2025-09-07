@@ -70,7 +70,10 @@ class AuthService {
   async sendDirectMessage({ userId, content }: { userId: string; content: string }) {
     return apiClient.post(`auth/send-message/${userId}`, { content })
   }
-  // profile fetch
+  async verifySellerByAdmin(phoneNo: string) {
+    // profile fetch
+    return apiClient.patch(`auth/verify-seller/${phoneNo}`)
+  }
 }
 
 // Export a singleton instance

@@ -40,9 +40,8 @@ const CategoryManagement = () => {
       .required('Category name is required')
       .min(3, 'Category name must be at least 3 characters'),
     description: Yup.string(),
-    categoryIcon: Yup.string()
-      .required('Category icon is required')
-      .url('Please enter a valid URL'),
+    categoryIcon: Yup.string().url('Please enter a valid URL'),
+    priority: Yup.number().default(100),
   })
 
   const formik = useFormik({
@@ -51,6 +50,7 @@ const CategoryManagement = () => {
       description: '',
       categoryIcon: '',
       parentId: null as number | null,
+      priority: 100,
     },
     validationSchema: categoryValidationSchema,
     onSubmit: async values => {
@@ -65,6 +65,7 @@ const CategoryManagement = () => {
               description: values.description,
               categoryIcon: values.categoryIcon,
               parentId: values.parentId || undefined,
+              priority: values.priority,
             }
           )
           response = { success, message }
@@ -79,6 +80,7 @@ const CategoryManagement = () => {
             description: values.description,
             categoryIcon: values.categoryIcon,
             parentId: parentCategory || values.parentId || undefined,
+            priority: values.priority,
           })
           response = { success, message }
           if (success) {
@@ -139,6 +141,14 @@ const CategoryManagement = () => {
       }
     }
   }
+  // Add this function inside the component, after the handleImageUpload function
+  const handleDeleteImage = () => {
+    setPreviewImage(null)
+    formik.setFieldValue('categoryIcon', '')
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
 
   // Trigger file input click
   const triggerFileInput = () => {
@@ -181,12 +191,16 @@ const CategoryManagement = () => {
   }
 
   // Open create modal
+  // Open create modal
   const openCreateModal = (parentId: number | null = null) => {
     formik.resetForm()
     setEditingCategory(null)
     setModalError(null)
     setPreviewImage(null)
     setParentCategory(parentId)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
     setIsModalOpen(true)
   }
 
@@ -198,12 +212,15 @@ const CategoryManagement = () => {
       description: category.description || '',
       categoryIcon: category.categoryIcon || '',
       parentId: category.parentId || null,
+      priority: category.priority || 100,
     })
     setPreviewImage(category.categoryIcon || null)
     setModalError(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
     setIsModalOpen(true)
   }
-
   // Handle delete
   const handleDelete = async () => {
     if (!categoryToDelete) return
@@ -448,9 +465,10 @@ const CategoryManagement = () => {
                   )}
 
                   {/* Image Upload */}
+                  {/* Image Upload */}
                   <div>
                     <label className='block text-sm font-medium text-gray-700 mb-1'>
-                      Category Icon *
+                      Category Icon
                     </label>
                     <input
                       type='file'
@@ -461,7 +479,7 @@ const CategoryManagement = () => {
                     />
                     <div className='flex flex-col items-center'>
                       {previewImage ? (
-                        <>
+                        <div className='relative'>
                           <img
                             src={previewImage}
                             alt='Preview'
@@ -469,12 +487,13 @@ const CategoryManagement = () => {
                           />
                           <button
                             type='button'
-                            onClick={triggerFileInput}
-                            className='text-sm text-indigo-600 hover:text-indigo-500'
+                            onClick={handleDeleteImage}
+                            className='absolute top-0 right-0 bg-red-600 text-white rounded-full p-1 hover:bg-red-700'
+                            title='Delete image'
                           >
-                            Change Image
+                            <XMarkIcon className='h-4 w-4' />
                           </button>
-                        </>
+                        </div>
                       ) : (
                         <div
                           onClick={triggerFileInput}
@@ -483,6 +502,15 @@ const CategoryManagement = () => {
                           <PlusIcon className='h-10 w-10 text-gray-400' />
                           <p className='mt-2 text-sm text-gray-600'>Click to upload image</p>
                         </div>
+                      )}
+                      {previewImage && (
+                        <button
+                          type='button'
+                          onClick={triggerFileInput}
+                          className='text-sm text-indigo-600 hover:text-indigo-500 mt-2'
+                        >
+                          Change Image
+                        </button>
                       )}
                       {isUploading && (
                         <p className='mt-2 text-sm text-gray-500'>Uploading image...</p>
@@ -528,6 +556,21 @@ const CategoryManagement = () => {
                       onBlur={formik.handleBlur}
                     />
                   </div>
+                  <div>
+                    <label htmlFor='priority' className='block text-sm font-medium text-gray-700'>
+                      Priority
+                    </label>
+                    <input
+                      id='priority'
+                      name='priority'
+                      type='number'
+                      min='0'
+                      className='mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500'
+                      value={formik.values.priority}
+                      onChange={formik.handleChange}
+                      onBlur={formik.handleBlur}
+                    />
+                  </div>
 
                   <div className='flex justify-end space-x-3 pt-4'>
                     <button
@@ -539,7 +582,7 @@ const CategoryManagement = () => {
                     </button>
                     <button
                       type='submit'
-                      disabled={isUploading || !formik.values.categoryIcon}
+                      disabled={isUploading}
                       className='inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed'
                     >
                       {isUploading

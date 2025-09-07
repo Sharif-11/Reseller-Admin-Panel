@@ -38,6 +38,7 @@ const SellerManagement = () => {
   const [amountToDeduct, setAmountToDeduct] = useState('')
   const [balanceNote, setBalanceNote] = useState('')
   const [processingBalance, setProcessingBalance] = useState(false)
+  const [verifyModalOpen, setVerifyModalOpen] = useState(false)
 
   // Fetch sellers
   const fetchSellers = async () => {
@@ -105,6 +106,32 @@ const SellerManagement = () => {
     setAmountToAdd('')
     setAmountToDeduct('')
     setBalanceNote('')
+  }
+  const openVerifyModal = (seller: User) => {
+    setSelectedSeller(seller)
+    setVerifyModalOpen(true)
+  }
+
+  const closeVerifyModal = () => {
+    setVerifyModalOpen(false)
+    setSelectedSeller(null)
+  }
+  const handleVerifySeller = async () => {
+    if (!selectedSeller) return
+
+    try {
+      const response = await authService.verifySellerByAdmin(selectedSeller.phoneNo)
+
+      if (response.success) {
+        setSuccess(`Seller ${selectedSeller.name} has been verified successfully`)
+        fetchSellers() // Refresh the list
+        closeVerifyModal()
+      } else {
+        setError(response.message || 'Failed to verify seller')
+      }
+    } catch (err) {
+      setError('Failed to verify seller')
+    }
   }
 
   const handleAddBalance = async () => {
@@ -435,6 +462,16 @@ const SellerManagement = () => {
                 >
                   <FaMoneyBillWave className='h-3.5 w-3.5' />
                 </button>
+                {!seller.isVerified && (
+                  <button
+                    type='button'
+                    onClick={() => openVerifyModal(seller)}
+                    className='inline-flex items-center rounded-md border border-transparent bg-green-600 p-1 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2'
+                    title='Verify Seller'
+                  >
+                    <CheckCircleIcon className='h-3.5 w-3.5' />
+                  </button>
+                )}
               </div>
             </div>
           ))
@@ -570,6 +607,15 @@ const SellerManagement = () => {
                       >
                         <FaMoneyBillWave className='h-5 w-5' />
                       </button>
+                      {!seller.isVerified && (
+                        <button
+                          onClick={() => openVerifyModal(seller)}
+                          className='text-green-600 hover:text-green-900'
+                          title='Verify Seller'
+                        >
+                          <CheckCircleIcon className='h-5 w-5' />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -1145,6 +1191,69 @@ const SellerManagement = () => {
                 >
                   <XMarkIcon className='-ml-1 mr-2 h-5 w-5' />
                   বাতিল
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {verifyModalOpen && selectedSeller && (
+        <div className='fixed inset-0 z-50 overflow-y-auto'>
+          <div className='flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0'>
+            <div
+              className='fixed inset-0 transition-opacity bg-black bg-opacity-50'
+              aria-hidden='true'
+              onClick={closeVerifyModal}
+            ></div>
+
+            <div className='inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all w-full max-w-md mx-4 sm:my-8 sm:align-middle sm:w-full'>
+              <div className='bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4'>
+                <div className='flex justify-between items-start'>
+                  <h3 className='text-lg leading-6 font-medium text-gray-900'>
+                    সেলার ভেরিফাই করুন
+                  </h3>
+                  <button
+                    onClick={closeVerifyModal}
+                    className='text-gray-400 hover:text-gray-500 focus:outline-none'
+                  >
+                    <XMarkIcon className='h-6 w-6' />
+                  </button>
+                </div>
+
+                <div className='mt-4'>
+                  <p className='text-sm text-gray-500'>
+                    আপনি কি নিশ্চিত যে আপনি <strong>{selectedSeller.name}</strong> কে ভেরিফাই করতে
+                    চান?
+                  </p>
+                  {/* <div className='mt-3 bg-yellow-50 border border-yellow-200 rounded-md p-3'>
+                    <div className='flex'>
+                      <div className='flex-shrink-0'>
+                        <ShieldExclamationIcon className='h-5 w-5 text-yellow-400' />
+                      </div>
+                      <div className='ml-3'>
+                        <p className='text-sm text-yellow-700'>
+                          This action will grant the seller full access to all platform features.
+                        </p>
+                      </div>
+                    </div>
+                  </div> */}
+                </div>
+              </div>
+              <div className='bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse'>
+                <button
+                  type='button'
+                  onClick={handleVerifySeller}
+                  className='w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm'
+                >
+                  <CheckCircleIcon className='h-5 w-5 mr-2' />
+                  ভেরিফাই করুন
+                </button>
+                <button
+                  type='button'
+                  onClick={closeVerifyModal}
+                  className='mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm'
+                >
+                  বাতিল করুন
                 </button>
               </div>
             </div>

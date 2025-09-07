@@ -18,6 +18,7 @@ export interface Category {
   categoryIcon?: string
   parentId?: number
   subCategories?: Category[]
+  priority?: number
 
   createdAt: Date
   updatedAt: Date
@@ -105,6 +106,7 @@ class ShopApiService {
     categoryIcon?: string
     isActive?: boolean
     parentId?: number
+    priority?: number
   }): Promise<ApiResponse<Category>> {
     return apiClient.post<Category>('categories', {
       name: categoryData.name,
@@ -112,6 +114,7 @@ class ShopApiService {
       categoryIcon: categoryData.categoryIcon,
       isActive: categoryData.isActive,
       parentId: categoryData.parentId,
+      priority: categoryData.priority,
     })
   }
 
@@ -155,6 +158,7 @@ class ShopApiService {
       description?: string
       categoryIcon?: string
       parentId?: number
+      priority?: number
     }
   ): Promise<ApiResponse<Category>> {
     return apiClient.put<Category>(`categories/${categoryId}`, values)

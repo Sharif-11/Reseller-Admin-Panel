@@ -7,3 +7,7 @@
 export const baseURL = 'https://server.shopbdresellerjob.com/api/v1'
 export const localStorageAvailable = false
 export const frontendUrl = 'https://shopbdresellerjob.com'
+
+// export const baseURL = 'https://demo-server.shopbdresellerjob.com/api/v1'
+// export const localStorageAvailable = false
+// export const frontendUrl = 'https://demo.shopbdresellerjob.com'
