@@ -1256,15 +1256,14 @@ const AdminOrders = () => {
                           {selectedOrder.Payment?.paymentStatus}
                         </span>
                       </p>
-
-                      {selectedOrder.amountPaidByCustomer && (
-                        <p className='text-sm'>
-                          <span className='font-medium'>Paid by Customer:</span>{' '}
-                          {parseFloat(selectedOrder.amountPaidByCustomer).toFixed(2)}৳
-                        </p>
-                      )}
                     </div>
                   </div>
+                )}
+                {selectedOrder.amountPaidByCustomer && (
+                  <p className='text-sm'>
+                    <span className='font-medium'>Paid by Customer:</span>{' '}
+                    {parseFloat(selectedOrder.amountPaidByCustomer).toFixed(2)}৳
+                  </p>
                 )}
               </div>
 
