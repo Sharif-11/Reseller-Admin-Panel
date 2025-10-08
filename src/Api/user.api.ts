@@ -13,6 +13,7 @@ export interface User {
   shopName?: string
   nomineePhone?: string
   facebookProfileLink?: string
+  profileImage?: string
   role?: string
   isActive: boolean
   createdAt: Date
@@ -30,6 +31,16 @@ export interface User {
   referredBy?: {
     name: string
     phoneNo: string
+  }
+  Wallet?: [
+    {
+      walletId: string
+      walletName: string
+      walletPhoneNo: string
+    }
+  ]
+  _count?: {
+    referrals: number
   }
 }
 

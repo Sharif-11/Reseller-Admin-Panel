@@ -1,5 +1,6 @@
 import {
   CheckCircleIcon,
+  CreditCardIcon,
   EnvelopeIcon,
   EyeIcon,
   MagnifyingGlassIcon,
@@ -7,6 +8,7 @@ import {
   PhoneIcon,
   ShieldExclamationIcon,
   UserCircleIcon,
+  WalletIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline'
 import { useEffect, useState } from 'react'
@@ -407,7 +409,15 @@ const SellerManagement = () => {
             <div key={seller.userId} className='rounded-lg bg-white p-4 shadow'>
               <div className='flex items-start space-x-3'>
                 <div className='flex-shrink-0'>
-                  <UserCircleIcon className='h-10 w-10 text-gray-400' aria-hidden='true' />
+                  {seller.profileImage ? (
+                    <img
+                      src={seller.profileImage}
+                      alt={`${seller.name}'s profile`}
+                      className='h-10 w-10 rounded-full object-cover'
+                    />
+                  ) : (
+                    <UserCircleIcon className='h-10 w-10 text-gray-400' aria-hidden='true' />
+                  )}
                 </div>
                 <div className='flex-1 min-w-0'>
                   <div className='flex justify-between'>
@@ -536,7 +546,15 @@ const SellerManagement = () => {
                   <td className='px-6 py-4 whitespace-nowrap'>
                     <div className='flex items-center'>
                       <div className='flex-shrink-0 h-10 w-10'>
-                        <UserCircleIcon className='h-10 w-10 text-gray-400' aria-hidden='true' />
+                        {seller.profileImage ? (
+                          <img
+                            src={seller.profileImage}
+                            alt={`${seller.name}'s profile`}
+                            className='h-10 w-10 rounded-full object-cover'
+                          />
+                        ) : (
+                          <UserCircleIcon className='h-10 w-10 text-gray-400' aria-hidden='true' />
+                        )}
                       </div>
                       <div className='ml-4'>
                         <div className='text-sm font-medium text-gray-900'>{seller.name}</div>
@@ -845,6 +863,43 @@ const SellerManagement = () => {
                         </span>
                       </p>
                     </div>
+                    {selectedSeller.Wallet && selectedSeller.Wallet.length > 0 && (
+                      <div className='sm:col-span-2'>
+                        <div className='flex items-center gap-2 mb-3'>
+                          <CreditCardIcon className='w-4 h-4 text-gray-400' />
+                          <h4 className='text-sm font-semibold text-gray-700'>Payment Methods</h4>
+                        </div>
+                        <div className='space-y-2'>
+                          {selectedSeller.Wallet.map(wallet => (
+                            <div
+                              key={wallet.walletId}
+                              className='group flex justify-between items-center rounded-lg border border-gray-200 bg-white px-4 py-3 transition-all duration-200 hover:border-blue-200 hover:shadow-sm'
+                            >
+                              <div className='flex items-center gap-3'>
+                                <div className='flex h-8 w-8 items-center justify-center rounded-full bg-blue-50'>
+                                  <WalletIcon className='w-4 h-4 text-blue-600' />
+                                </div>
+                                <span className='font-medium text-gray-900'>
+                                  {wallet.walletName}
+                                </span>
+                              </div>
+                              <span className='text-sm font-mono text-gray-600 bg-gray-50 px-2 py-1 rounded'>
+                                {wallet.walletPhoneNo}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}{' '}
+                    {selectedSeller._count?.referrals !== undefined && (
+                      <div>
+                        <h4 className='text-sm font-medium text-gray-500'>Total Referrals</h4>
+                        <p className='mt-1 text-sm text-gray-900'>
+                          {selectedSeller._count.referrals}{' '}
+                          {selectedSeller._count.referrals === 1 ? 'User' : 'Users'}
+                        </p>
+                      </div>
+                    )}
                     <div>
                       <h4 className='text-sm font-medium text-gray-500'>Joined On</h4>
                       <p className='mt-1 text-sm text-gray-900'>

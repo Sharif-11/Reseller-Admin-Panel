@@ -37,7 +37,7 @@ const AdminHeader = ({
     if (!user?.userId) return
     try {
       const count = await notificationService.getUnreadCount(user.userId)
-      setUnreadCount(30)
+      setUnreadCount(3)
     } catch (error) {
       console.error('Error fetching unread count:', error)
     }
