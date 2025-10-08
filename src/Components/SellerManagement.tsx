@@ -819,6 +819,18 @@ const SellerManagement = () => {
                         )}
                       </p>
                     </div>
+                    {/* we need to display the referrer information in another section (Name-Phone) within one line */}
+                    {selectedSeller.referredBy && (
+                      <div>
+                        <h4 className='text-sm font-medium text-gray-500'>Referred By</h4>
+                        <p className='mt-1 text-sm text-gray-900'>
+                          {selectedSeller.referredBy ? selectedSeller.referredBy.name : 'N/A'}
+                          {selectedSeller.referredBy
+                            ? ` (${selectedSeller.referredBy.phoneNo})`
+                            : ''}
+                        </p>
+                      </div>
+                    )}
                     <div>
                       <h4 className='text-sm font-medium text-gray-500'>Status</h4>
                       <p className='mt-1 text-sm text-gray-900'>

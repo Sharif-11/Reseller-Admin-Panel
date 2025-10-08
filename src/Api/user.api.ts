@@ -27,6 +27,10 @@ export interface User {
       roleName: string
     }
   }[]
+  referredBy?: {
+    name: string
+    phoneNo: string
+  }
 }
 
 export interface Customer {

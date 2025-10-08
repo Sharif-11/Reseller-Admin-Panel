@@ -89,7 +89,7 @@ interface PaginationState {
   pageSize: number
 }
 
-type OrderStatusTab = 'pending' | 'confirmed' | 'delivered' | 'completed' | 'others'
+type OrderStatusTab = 'pending' | 'confirmed' | 'delivered' | 'completed' | 'unpaid' | 'others'
 
 const AdminOrders = () => {
   const [allOrders, setAllOrders] = useState<Order[]>([])
@@ -103,6 +103,7 @@ const AdminOrders = () => {
     confirmed: { currentPage: 1, totalPages: 1, totalOrders: 0, pageSize: 10 },
     delivered: { currentPage: 1, totalPages: 1, totalOrders: 0, pageSize: 10 },
     completed: { currentPage: 1, totalPages: 1, totalOrders: 0, pageSize: 10 },
+    unpaid: { currentPage: 1, totalPages: 1, totalOrders: 0, pageSize: 10 },
     others: { currentPage: 1, totalPages: 1, totalOrders: 0, pageSize: 10 },
   })
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
@@ -130,7 +131,7 @@ const AdminOrders = () => {
       let statusParam: OrderStatus[] = []
 
       if (activeTab === 'pending') {
-        statusParam = ['UNPAID', 'PAID']
+        statusParam = ['PAID', 'CONFIRMED']
       } else if (activeTab === 'confirmed') {
         statusParam = ['CONFIRMED']
       } else if (activeTab === 'delivered') {
@@ -139,6 +140,8 @@ const AdminOrders = () => {
         statusParam = ['COMPLETED']
       } else if (activeTab === 'others') {
         statusParam = ['CANCELLED', 'REJECTED', 'REFUNDED', 'RETURNED', 'FAILED']
+      } else {
+        statusParam = ['UNPAID']
       }
 
       const response = await orderApi.getOrdersByAdmin({
@@ -405,7 +408,7 @@ const AdminOrders = () => {
             >
               Pending
             </button>
-            <button
+            {/* <button
               className={`px-3 py-2 text-[10px] md:text-sm ${
                 activeTab === 'confirmed'
                   ? 'text-blue-600 border-b-2 border-blue-600'
@@ -414,7 +417,7 @@ const AdminOrders = () => {
               onClick={() => setActiveTab('confirmed')}
             >
               Confirmed
-            </button>
+            </button> */}
             <button
               className={`px-3 py-2 text-[10px] md:text-sm ${
                 activeTab === 'delivered'
@@ -434,6 +437,16 @@ const AdminOrders = () => {
               onClick={() => setActiveTab('completed')}
             >
               Completed
+            </button>
+            <button
+              className={`px-3 py-2 text-[10px] md:text-sm ${
+                activeTab === 'unpaid'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-500'
+              }`}
+              onClick={() => setActiveTab('unpaid')}
+            >
+              Unpaid
             </button>
             <button
               className={`px-3 py-2 text-[10px] md:text-sm ${
