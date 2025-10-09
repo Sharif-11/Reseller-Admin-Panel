@@ -8,7 +8,8 @@ import {
   UserCircleIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { FaSpinner } from 'react-icons/fa'
 import { authService } from '../Api/auth.api'
 import { blockApiService, type BlockActionType } from '../Api/block.api'
 import { userManagementApiService } from '../Api/user.api'
@@ -29,10 +30,9 @@ const CustomerManagement = () => {
   // State management
   const [customers, setCustomers] = useState<Customer[]>([])
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([])
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
   const [searchTerm, setSearchTerm] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
@@ -41,32 +41,53 @@ const CustomerManagement = () => {
   const [userBlockActions, setUserBlockActions] = useState<BlockActionType[]>([])
   const [availableBlockActions, setAvailableBlockActions] = useState<BlockActionType[]>([])
   const [selectedActions, setSelectedActions] = useState<BlockActionType[]>([])
-  const [pageSize, setPageSize] = useState(10)
+
+  // Infinite scroll state
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const pageSize = 10
 
   // Fetch customers
-  const fetchCustomers = async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const response = await userManagementApiService.getAllCustomers({
-        page: currentPage,
-        limit: pageSize,
-        phoneNo: searchTerm,
-      })
+  const fetchCustomers = useCallback(
+    async (pageNum = 1, isLoadMore = false) => {
+      try {
+        if (isLoadMore) {
+          setIsLoadingMore(true)
+        } else {
+          setIsLoading(true)
+          setPage(1)
+        }
 
-      if (response.success && response.data) {
-        setCustomers(response.data.customers)
-        setFilteredCustomers(response.data.customers)
-        setTotalPages(Math.ceil(response.data.totalCount / pageSize))
-      } else {
-        setError(response.message || 'Failed to fetch customers')
+        const response = await userManagementApiService.getAllCustomers({
+          page: pageNum,
+          limit: pageSize,
+          phoneNo: searchTerm,
+        })
+
+        if (response.success && response.data) {
+          if (isLoadMore) {
+            setCustomers(prev => [...prev, ...response.data.customers])
+            setFilteredCustomers(prev => [...prev, ...response.data.customers])
+          } else {
+            setCustomers(response.data.customers)
+            setFilteredCustomers(response.data.customers)
+          }
+
+          // Check if there are more pages
+          setHasMore(pageNum < Math.ceil(response.data.totalCount / pageSize))
+          setPage(pageNum)
+        } else {
+          setError(response.message || 'Failed to fetch customers')
+        }
+      } catch (err) {
+        setError('Failed to fetch customers')
+      } finally {
+        setIsLoading(false)
+        setIsLoadingMore(false)
       }
-    } catch (err) {
-      setError('Failed to fetch customers')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+    },
+    [searchTerm, pageSize]
+  )
 
   // Fetch all available block action types
   const fetchAvailableBlockActions = async () => {
@@ -96,7 +117,10 @@ const CustomerManagement = () => {
   // Handle search
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value)
-    setCurrentPage(1)
+    setCustomers([])
+    setFilteredCustomers([])
+    setPage(1)
+    setHasMore(true)
   }
 
   // Apply filters
@@ -116,10 +140,45 @@ const CustomerManagement = () => {
     }
   }, [searchTerm, customers])
 
-  // Handle page change
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page)
-  }
+  // Load more function for infinite scroll
+  const loadMore = useCallback(() => {
+    if (!isLoadingMore && hasMore && !isLoading) {
+      fetchCustomers(page + 1, true)
+    }
+  }, [page, hasMore, isLoadingMore, isLoading, fetchCustomers])
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+          loadMore()
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    const sentinel = document.getElementById('scroll-sentinel')
+    if (sentinel) {
+      observer.observe(sentinel)
+    }
+
+    return () => {
+      if (sentinel) {
+        observer.unobserve(sentinel)
+      }
+    }
+  }, [hasMore, isLoadingMore, loadMore])
+
+  // Initialize
+  useEffect(() => {
+    setCustomers([])
+    setFilteredCustomers([])
+    setPage(1)
+    setHasMore(true)
+    fetchCustomers(1, false)
+    fetchAvailableBlockActions()
+  }, [searchTerm, fetchCustomers])
 
   // Handle block/unblock actions
   const handleBlockActions = async () => {
@@ -201,12 +260,6 @@ const CustomerManagement = () => {
     setSelectedCustomer(null)
   }
 
-  // Initialize
-  useEffect(() => {
-    fetchCustomers()
-    fetchAvailableBlockActions()
-  }, [currentPage, pageSize, searchTerm])
-
   // Close messages after 5 seconds
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -283,85 +336,85 @@ const CustomerManagement = () => {
             onChange={handleSearch}
           />
         </div>
-        <div className='flex items-center space-x-2'>
-          <select
-            className='rounded-md border border-gray-300 bg-white py-2 pl-3 pr-8 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500'
-            value={pageSize}
-            onChange={e => setPageSize(Number(e.target.value))}
-          >
-            <option value={10}>10 per page</option>
-            <option value={25}>25 per page</option>
-            <option value={50}>50 per page</option>
-            <option value={100}>100 per page</option>
-          </select>
-        </div>
       </div>
 
       {/* Mobile View - Card List */}
       <div className='sm:hidden space-y-3'>
-        {isLoading ? (
+        {isLoading && !isLoadingMore ? (
           <div className='flex justify-center py-8'>
             <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600'></div>
           </div>
-        ) : filteredCustomers.length === 0 ? (
+        ) : filteredCustomers.length === 0 && !isLoading ? (
           <div className='rounded-lg bg-white p-4 shadow text-center'>
             {searchTerm ? 'No customers found' : 'No customers available'}
           </div>
         ) : (
-          filteredCustomers.map(customer => (
-            <div key={customer.customerId} className='rounded-lg bg-white p-4 shadow'>
-              <div className='flex items-start space-x-3'>
-                <div className='flex-shrink-0'>
-                  <UserCircleIcon className='h-10 w-10 text-gray-400' aria-hidden='true' />
+          <>
+            {filteredCustomers.map(customer => (
+              <div key={customer.customerId} className='rounded-lg bg-white p-4 shadow'>
+                <div className='flex items-start space-x-3'>
+                  <div className='flex-shrink-0'>
+                    <UserCircleIcon className='h-10 w-10 text-gray-400' aria-hidden='true' />
+                  </div>
+                  <div className='flex-1 min-w-0'>
+                    <div className='flex justify-between'>
+                      <h3 className='text-sm font-medium text-gray-900 truncate'>
+                        {customer.customerName || 'Unnamed Customer'}
+                      </h3>
+                      <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800'>
+                        {customer.balance} Tk.
+                      </span>
+                    </div>
+                    <div className='mt-1 text-sm text-gray-500 truncate'>
+                      <div className='flex items-center'>
+                        <PhoneIcon className='mr-1 h-3.5 w-3.5' />
+                        {customer.customerPhoneNo}
+                      </div>
+                      <div className='mt-1 truncate'>
+                        Referred by: {customer.sellerName} ({customer.sellerPhone})
+                      </div>
+                      <div className='mt-1 text-xs text-gray-400'>
+                        Joined: {new Date(customer.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className='flex-1 min-w-0'>
-                  <div className='flex justify-between'>
-                    <h3 className='text-sm font-medium text-gray-900 truncate'>
-                      {customer.customerName || 'Unnamed Customer'}
-                    </h3>
-                    <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800'>
-                      {customer.balance} Tk.
-                    </span>
-                  </div>
-                  <div className='mt-1 text-sm text-gray-500 truncate'>
-                    <div className='flex items-center'>
-                      <PhoneIcon className='mr-1 h-3.5 w-3.5' />
-                      {customer.customerPhoneNo}
-                    </div>
-                    <div className='mt-1 truncate'>
-                      Referred by: {customer.sellerName} ({customer.sellerPhone})
-                    </div>
-                    <div className='mt-1 text-xs text-gray-400'>
-                      Joined: {new Date(customer.createdAt).toLocaleDateString()}
-                    </div>
-                  </div>
+                <div className='mt-3 flex justify-end space-x-1'>
+                  <button
+                    type='button'
+                    onClick={() => openBlockModal(customer)}
+                    className='inline-flex items-center rounded-md border border-gray-300 bg-white p-1 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2'
+                  >
+                    <ShieldExclamationIcon className='h-3.5 w-3.5' />
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => openMessageModal(customer)}
+                    className='inline-flex items-center rounded-md border border-transparent bg-indigo-600 p-1 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2'
+                  >
+                    <PaperAirplaneIcon className='h-3.5 w-3.5' />
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => openDetailsModal(customer)}
+                    className='inline-flex items-center rounded-md border border-gray-300 bg-white p-1 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2'
+                  >
+                    <EyeIcon className='h-3.5 w-3.5' />
+                  </button>
                 </div>
               </div>
-              <div className='mt-3 flex justify-end space-x-1'>
-                <button
-                  type='button'
-                  onClick={() => openBlockModal(customer)}
-                  className='inline-flex items-center rounded-md border border-gray-300 bg-white p-1 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2'
-                >
-                  <ShieldExclamationIcon className='h-3.5 w-3.5' />
-                </button>
-                <button
-                  type='button'
-                  onClick={() => openMessageModal(customer)}
-                  className='inline-flex items-center rounded-md border border-transparent bg-indigo-600 p-1 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2'
-                >
-                  <PaperAirplaneIcon className='h-3.5 w-3.5' />
-                </button>
-                <button
-                  type='button'
-                  onClick={() => openDetailsModal(customer)}
-                  className='inline-flex items-center rounded-md border border-gray-300 bg-white p-1 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2'
-                >
-                  <EyeIcon className='h-3.5 w-3.5' />
-                </button>
+            ))}
+
+            {/* Loading indicator for infinite scroll */}
+            {isLoadingMore && (
+              <div className='flex justify-center py-4'>
+                <FaSpinner className='animate-spin text-indigo-500 text-xl' />
               </div>
-            </div>
-          ))
+            )}
+
+            {/* Scroll sentinel for infinite scroll */}
+            {hasMore && !isLoadingMore && <div id='scroll-sentinel' className='h-10' />}
+          </>
         )}
       </div>
 
@@ -409,7 +462,7 @@ const CustomerManagement = () => {
             </tr>
           </thead>
           <tbody className='bg-white divide-y divide-gray-200'>
-            {isLoading ? (
+            {isLoading && !isLoadingMore ? (
               <tr>
                 <td colSpan={6} className='px-6 py-4 text-center'>
                   <div className='flex justify-center py-8'>
@@ -417,169 +470,95 @@ const CustomerManagement = () => {
                   </div>
                 </td>
               </tr>
-            ) : filteredCustomers.length === 0 ? (
+            ) : filteredCustomers.length === 0 && !isLoading ? (
               <tr>
                 <td colSpan={6} className='px-6 py-4 text-center text-gray-500'>
                   {searchTerm ? 'No customers found' : 'No customers available'}
                 </td>
               </tr>
             ) : (
-              filteredCustomers.map(customer => (
-                <tr key={customer.customerId} className='hover:bg-gray-50'>
-                  <td className='px-6 py-4 whitespace-nowrap'>
-                    <div className='flex items-center'>
-                      <div className='flex-shrink-0 h-10 w-10'>
-                        <UserCircleIcon className='h-10 w-10 text-gray-400' aria-hidden='true' />
-                      </div>
-                      <div className='ml-4'>
-                        <div className='text-sm font-medium text-gray-900'>
-                          {customer.customerName || 'Unnamed Customer'}
+              <>
+                {filteredCustomers.map(customer => (
+                  <tr key={customer.customerId} className='hover:bg-gray-50'>
+                    <td className='px-6 py-4 whitespace-nowrap'>
+                      <div className='flex items-center'>
+                        <div className='flex-shrink-0 h-10 w-10'>
+                          <UserCircleIcon className='h-10 w-10 text-gray-400' aria-hidden='true' />
+                        </div>
+                        <div className='ml-4'>
+                          <div className='text-sm font-medium text-gray-900'>
+                            {customer.customerName || 'Unnamed Customer'}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className='px-6 py-4 whitespace-nowrap'>
-                    <div className='text-sm text-gray-900'>
-                      <div className='flex items-center'>
-                        <PhoneIcon className='mr-1 h-4 w-4 text-gray-500' />
-                        {customer.customerPhoneNo}
+                    </td>
+                    <td className='px-6 py-4 whitespace-nowrap'>
+                      <div className='text-sm text-gray-900'>
+                        <div className='flex items-center'>
+                          <PhoneIcon className='mr-1 h-4 w-4 text-gray-500' />
+                          {customer.customerPhoneNo}
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className='px-6 py-4'>
-                    <div className='text-sm text-gray-900'>{customer.sellerName}</div>
-                    <div className='text-sm text-gray-500'>{customer.sellerPhone}</div>
-                    <div className='text-xs text-gray-400'>Code: {customer.sellerCode}</div>
-                  </td>
-                  <td className='px-6 py-4 whitespace-nowrap'>
-                    <span className='px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800'>
-                      {customer.balance} Tk.
-                    </span>
-                  </td>
-                  <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'>
-                    {new Date(customer.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium'>
-                    <div className='flex justify-end space-x-2'>
-                      <button
-                        onClick={() => openBlockModal(customer)}
-                        className='text-indigo-600 hover:text-indigo-900'
-                        title='Block Actions'
-                      >
-                        <ShieldExclamationIcon className='h-5 w-5' />
-                      </button>
-                      <button
-                        onClick={() => openMessageModal(customer)}
-                        className='text-green-600 hover:text-green-900'
-                        title='Send Message'
-                      >
-                        <PaperAirplaneIcon className='h-5 w-5' />
-                      </button>
-                      <button
-                        onClick={() => openDetailsModal(customer)}
-                        className='text-blue-600 hover:text-blue-900'
-                        title='View Details'
-                      >
-                        <EyeIcon className='h-5 w-5' />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+                    </td>
+                    <td className='px-6 py-4'>
+                      <div className='text-sm text-gray-900'>{customer.sellerName}</div>
+                      <div className='text-sm text-gray-500'>{customer.sellerPhone}</div>
+                      <div className='text-xs text-gray-400'>Code: {customer.sellerCode}</div>
+                    </td>
+                    <td className='px-6 py-4 whitespace-nowrap'>
+                      <span className='px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800'>
+                        {customer.balance} Tk.
+                      </span>
+                    </td>
+                    <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'>
+                      {new Date(customer.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium'>
+                      <div className='flex justify-end space-x-2'>
+                        <button
+                          onClick={() => openBlockModal(customer)}
+                          className='text-indigo-600 hover:text-indigo-900'
+                          title='Block Actions'
+                        >
+                          <ShieldExclamationIcon className='h-5 w-5' />
+                        </button>
+                        <button
+                          onClick={() => openMessageModal(customer)}
+                          className='text-green-600 hover:text-green-900'
+                          title='Send Message'
+                        >
+                          <PaperAirplaneIcon className='h-5 w-5' />
+                        </button>
+                        <button
+                          onClick={() => openDetailsModal(customer)}
+                          className='text-blue-600 hover:text-blue-900'
+                          title='View Details'
+                        >
+                          <EyeIcon className='h-5 w-5' />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+
+                {/* Loading row for infinite scroll */}
+                {isLoadingMore && (
+                  <tr>
+                    <td colSpan={6} className='px-6 py-4 text-center'>
+                      <div className='flex justify-center'>
+                        <FaSpinner className='animate-spin text-indigo-500 text-xl' />
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </>
             )}
           </tbody>
         </table>
+
+        {/* Scroll sentinel for infinite scroll */}
+        {hasMore && !isLoadingMore && <div id='scroll-sentinel' className='h-10' />}
       </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className='mt-4 flex items-center justify-between'>
-          <div className='hidden sm:flex-1 sm:flex sm:items-center sm:justify-between'>
-            <div>
-              <p className='text-sm text-gray-700'>
-                Showing <span className='font-medium'>{(currentPage - 1) * pageSize + 1}</span> to{' '}
-                <span className='font-medium'>
-                  {Math.min(currentPage * pageSize, filteredCustomers.length)}
-                </span>{' '}
-                of <span className='font-medium'>{filteredCustomers.length}</span> customers
-              </p>
-            </div>
-            <div>
-              <nav
-                className='relative z-0 inline-flex rounded-md shadow-sm -space-x-px'
-                aria-label='Pagination'
-              >
-                <button
-                  onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                  className='relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-                >
-                  <span className='sr-only'>Previous</span>
-                  <svg
-                    className='h-5 w-5'
-                    xmlns='http://www.w3.org/2000/svg'
-                    viewBox='0 0 20 20'
-                    fill='currentColor'
-                    aria-hidden='true'
-                  >
-                    <path
-                      fillRule='evenodd'
-                      d='M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z'
-                      clipRule='evenodd'
-                    />
-                  </svg>
-                </button>
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum
-                  if (totalPages <= 5) {
-                    pageNum = i + 1
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i
-                  } else {
-                    pageNum = currentPage - 2 + i
-                  }
-
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => handlePageChange(pageNum)}
-                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                        currentPage === pageNum
-                          ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
-                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  )
-                })}
-                <button
-                  onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                  className='relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-                >
-                  <span className='sr-only'>Next</span>
-                  <svg
-                    className='h-5 w-5'
-                    xmlns='http://www.w3.org/2000/svg'
-                    viewBox='0 0 20 20'
-                    fill='currentColor'
-                    aria-hidden='true'
-                  >
-                    <path
-                      fillRule='evenodd'
-                      d='M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z'
-                      clipRule='evenodd'
-                    />
-                  </svg>
-                </button>
-              </nav>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Customer Details Modal */}
       {activeModal === 'detail' && selectedCustomer && (

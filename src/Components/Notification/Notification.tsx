@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react'
 
+import { rootURL } from '../../Axios/baseUrl'
 import { useAuth } from '../../Hooks/useAuth'
+import { NotificationClient } from '../../Socket/socket'
+import audioFile from './Assets/notification.mp3'
 import { notificationService } from './notification.services'
 import type { FrontendNotification } from './notification.types'
 import { NotificationType } from './notification.types'
@@ -10,96 +13,17 @@ interface NotificationDropdownProps {
   isOpen: boolean
   onClose: () => void
   onMarkAllAsRead: () => void
+  setUnreadCount: (count: number) => void
 }
 
 const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
   isOpen,
   onClose,
-  onMarkAllAsRead,
+  setUnreadCount,
 }) => {
   const { user } = useAuth()
-  const [notifications, setNotifications] = useState<FrontendNotification[]>([
-    {
-      id: '1',
-      type: NotificationType.NEW_ORDER,
-      title: 'New Order',
-      message: 'You have a new order.',
-      timestamp: new Date().toISOString(),
-      timeAgo: 'Just now',
-      read: false,
-      relatedId: 123,
-    },
-    {
-      id: '2',
-      type: NotificationType.PAYMENT_REQUEST,
-      title: 'Payment Received',
-      message: 'Your payment has been received.',
-      timestamp: new Date().toISOString(),
-      timeAgo: '5 minutes ago',
-      read: false,
-      relatedId: 'pay_456',
-    },
-    {
-      id: '3',
-      type: NotificationType.WITHDRAW_REQUEST,
-      title: 'Withdraw Processed',
-      message: 'Your withdraw request has been processed.',
-      timestamp: new Date().toISOString(),
-      timeAgo: '1 hour ago',
-      read: true,
-      relatedId: 'with_789',
-    },
-    {
-      id: '4',
-      type: NotificationType.TICKET_MESSAGE,
-      title: 'Support Ticket',
-      message: 'You have a new message in your support ticket.',
-      timestamp: new Date().toISOString(),
-      timeAgo: '2 hours ago',
-      read: true,
-      relatedId: 'tick_101',
-    },
-    {
-      id: '5',
-      type: NotificationType.NEW_ORDER,
-      title: 'New Order',
-      message: 'You have a new order.',
-      timestamp: new Date().toISOString(),
-      timeAgo: '3 hours ago',
-      read: false,
-      relatedId: 124,
-    },
-    {
-      id: '6',
-      type: NotificationType.PAYMENT_REQUEST,
-      title: 'Payment Received',
-      message: 'Your payment has been received.',
-      timestamp: new Date().toISOString(),
-      timeAgo: '4 hours ago',
-      read: true,
-      relatedId: 'pay_457',
-    },
-    {
-      id: '7',
-      type: NotificationType.WITHDRAW_REQUEST,
-      title: 'Withdraw Processed',
-      message: 'Your withdraw request has been processed.',
-      timestamp: new Date().toISOString(),
-      timeAgo: '5 hours ago',
-      read: false,
-      relatedId: 'with_790',
-    },
-    {
-      id: '8',
-      type: NotificationType.TICKET_MESSAGE,
-      title: 'Support Ticket',
-      message: 'You have a new message in your support ticket.',
-      timestamp: new Date().toISOString(),
-      timeAgo: '6 hours ago',
-      read: true,
-      relatedId: 'tick_102',
-    },
-  ])
+  const [notifications, setNotifications] = useState<FrontendNotification[]>([])
+  const [, setSocketInstance] = useState<NotificationClient | null>(null)
   const [showAll, setShowAll] = useState(false)
   const [loading, setLoading] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -108,8 +32,38 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
 
   // Fetch notifications
   useEffect(() => {
-    if (isOpen && user?.userId) {
-      fetchNotifications()
+    if (user?.userId) {
+      setLoading(true)
+      const newClient = new NotificationClient({
+        serverUrl: rootURL,
+        onConnected: () => console.log('Connected to notification server'),
+        onDisconnected: () => console.log('Disconnected from notification server'),
+        onIdentificationSuccess: data => console.log('Identified:', data),
+        onIdentificationError: error => console.error('Identification error:', error),
+        onNewNotification: notification => {
+          // we have an audio file at public/notification.mp3 which must be played when a new notification arrives
+          const audio = new Audio(audioFile)
+          audio.play().catch(err => console.error('Audio play error:', err.message))
+
+          notification &&
+            setNotifications(prev => [
+              notificationService.convertToFrontendFormat(notification, user.userId),
+              ...prev,
+            ])
+        },
+        onAllNotifications: notifications =>
+          notifications &&
+          setNotifications(
+            notifications.map(notif =>
+              notificationService.convertToFrontendFormat(notif, user.userId)
+            )
+          ),
+        onUnreadCount: count => setUnreadCount(count),
+        onError: error => console.error('Socket error:', error),
+      })
+      newClient.connect(user.userId)
+      setSocketInstance(newClient)
+      setLoading(false)
     }
   }, [isOpen, user?.userId])
 
@@ -144,77 +98,6 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
   const handleClose = () => {
     onClose()
     setShowAll(false)
-  }
-
-  const fetchNotifications = async () => {
-    if (!user?.userId) return
-
-    setLoading(true)
-    try {
-      const fetchedNotifications = await notificationService.getNotifications(user.userId)
-      // setNotifications(fetchedNotifications)
-    } catch (error) {
-      console.error('Error fetching notifications:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleMarkAsRead = async (notificationId: string) => {
-    if (!user?.userId) return
-
-    const success = await notificationService.markAsRead(notificationId, user.userId)
-    if (success) {
-      setNotifications(prev =>
-        prev.map(notif => (notif.id === notificationId ? { ...notif, read: true } : notif))
-      )
-      onMarkAllAsRead()
-    }
-  }
-
-  const handleMarkAllAsRead = async () => {
-    if (!user?.userId) return
-
-    const success = await notificationService.markAllAsRead(user.userId)
-    if (success) {
-      setNotifications(prev => prev.map(notif => ({ ...notif, read: true })))
-      onMarkAllAsRead()
-    }
-  }
-
-  const handleNotificationClick = (notification: FrontendNotification) => {
-    // Mark as read immediately for better UX
-    handleMarkAsRead(notification.id)
-
-    // Navigate based on notification type
-    let targetUrl = ''
-    switch (notification.type) {
-      case NotificationType.NEW_ORDER:
-        targetUrl = notification.relatedId
-          ? `/dashboard/orders/${notification.relatedId}`
-          : '/dashboard/orders'
-        break
-      case NotificationType.PAYMENT_REQUEST:
-        targetUrl = '/dashboard/payments'
-        break
-      case NotificationType.WITHDRAW_REQUEST:
-        targetUrl = '/dashboard/withdrawals'
-        break
-      case NotificationType.TICKET_MESSAGE:
-        targetUrl = notification.relatedId
-          ? `/dashboard/support/tickets/${notification.relatedId}`
-          : '/dashboard/support/tickets'
-        break
-      default:
-        targetUrl = '/dashboard'
-    }
-
-    handleClose()
-
-    // Use setTimeout to ensure dropdown closes before navigation
-    setTimeout(() => {
-      window.location.href = targetUrl
-    }, 100)
   }
 
   const getNotificationIcon = (type: NotificationType) => {
@@ -273,14 +156,9 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
         <div className='notification-header'>
           <div className='notification-title'>
             <span className='notification-icon'>🔔</span>
-            Notifications
+            নোটিফিকেশন
             {unreadCount > 0 && <span className='notification-badge'>{unreadCount} new</span>}
           </div>
-          {unreadCount > 0 && (
-            <button onClick={handleMarkAllAsRead} className='mark-all-read-btn'>
-              Mark all read
-            </button>
-          )}
         </div>
 
         {/* Notifications List */}
@@ -294,7 +172,6 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
               <div
                 key={notification.id}
                 className={`notification-item ${!notification.read ? 'unread' : ''}`}
-                onClick={() => handleNotificationClick(notification)}
               >
                 <div
                   className='notification-icon-type'
@@ -317,8 +194,8 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
           ) : (
             <div className='notification-empty'>
               <div className='empty-icon'>🔔</div>
-              <p>No notifications yet</p>
-              <span>We'll notify you when something arrives</span>
+              <p>কোন নোটিফিকেশন নেই</p>
+              <span>কোন নোটিফিকেশন আসলে আপনাকে জানানো হবে</span>
             </div>
           )}
         </div>

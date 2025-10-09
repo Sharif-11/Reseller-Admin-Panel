@@ -28,6 +28,7 @@ export const UserContext = createContext<UserContextType>({
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
+
   const [loading] = useState(false) // Start with true to prevent flash of unauthorized content
   const [error] = useState<Error | null>(null)
 

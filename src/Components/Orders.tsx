@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { FaCopy, FaSearch, FaSpinner } from 'react-icons/fa'
-import { NavLink } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import {
   orderApi,
@@ -9,6 +8,7 @@ import {
   type PaymentStatus,
   type PaymentType,
 } from '../Api/order.api'
+import { paymentAPI } from '../Api/payment.api'
 import ProductImagePreviewModal from './ProductImagePreview'
 
 interface Order {
@@ -82,13 +82,6 @@ interface OrderProduct {
   totalProductSellingPrice: string
 }
 
-interface PaginationState {
-  currentPage: number
-  totalPages: number
-  totalOrders: number
-  pageSize: number
-}
-
 type OrderStatusTab = 'pending' | 'confirmed' | 'delivered' | 'completed' | 'unpaid' | 'others'
 
 const AdminOrders = () => {
@@ -98,14 +91,6 @@ const AdminOrders = () => {
   const [previewProductImage, setPreviewProductImage] = useState<string | null>(null)
   const [previewProductName, setPreviewProductName] = useState<string>('')
 
-  const [pagination, setPagination] = useState<Record<string, PaginationState>>({
-    pending: { currentPage: 1, totalPages: 1, totalOrders: 0, pageSize: 10 },
-    confirmed: { currentPage: 1, totalPages: 1, totalOrders: 0, pageSize: 10 },
-    delivered: { currentPage: 1, totalPages: 1, totalOrders: 0, pageSize: 10 },
-    completed: { currentPage: 1, totalPages: 1, totalOrders: 0, pageSize: 10 },
-    unpaid: { currentPage: 1, totalPages: 1, totalOrders: 0, pageSize: 10 },
-    others: { currentPage: 1, totalPages: 1, totalOrders: 0, pageSize: 10 },
-  })
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [processingOrder, setProcessingOrder] = useState<boolean>(false)
   const [activeTab, setActiveTab] = useState<OrderStatusTab>('pending')
@@ -125,75 +110,124 @@ const AdminOrders = () => {
   })
   const [actionError, setActionError] = useState('')
 
-  const fetchOrders = async (page = 1, pageSize = pagination[activeTab].pageSize) => {
-    try {
-      setFetching(true)
-      let statusParam: OrderStatus[] = []
+  const [showPaymentVerificationModal, setShowPaymentVerificationModal] = useState(false)
+  const [selectedPayment, setSelectedPayment] = useState<any>(null)
+  const [paymentActionType, setPaymentActionType] = useState<'verify' | 'reject' | null>(null)
+  const [paymentProcessing, setPaymentProcessing] = useState(false)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [paymentVerificationData, setPaymentVerificationData] = useState({
+    transactionId: '',
+    remarks: '',
+  })
 
-      if (activeTab === 'pending') {
-        statusParam = ['PAID', 'CONFIRMED']
-      } else if (activeTab === 'confirmed') {
-        statusParam = ['CONFIRMED']
-      } else if (activeTab === 'delivered') {
-        statusParam = ['DELIVERED']
-      } else if (activeTab === 'completed') {
-        statusParam = ['COMPLETED']
-      } else if (activeTab === 'others') {
-        statusParam = ['CANCELLED', 'REJECTED', 'REFUNDED', 'RETURNED', 'FAILED']
-      } else {
-        statusParam = ['UNPAID']
+  // Infinite scroll state
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const pageSize = 10
+
+  const fetchOrders = useCallback(
+    async (pageNum = 1, isLoadMore = false) => {
+      try {
+        if (isLoadMore) {
+          setIsLoadingMore(true)
+        } else {
+          setFetching(true)
+          setPage(1)
+        }
+
+        let statusParam: OrderStatus[] = []
+
+        if (activeTab === 'pending') {
+          statusParam = ['PAID', 'CONFIRMED']
+        } else if (activeTab === 'confirmed') {
+          statusParam = ['CONFIRMED']
+        } else if (activeTab === 'delivered') {
+          statusParam = ['DELIVERED']
+        } else if (activeTab === 'completed') {
+          statusParam = ['COMPLETED']
+        } else if (activeTab === 'others') {
+          statusParam = ['CANCELLED', 'REJECTED', 'REFUNDED', 'RETURNED', 'FAILED']
+        } else {
+          statusParam = ['UNPAID']
+        }
+
+        const response = await orderApi.getOrdersByAdmin({
+          page: pageNum,
+          limit: pageSize,
+          orderStatus: statusParam,
+          search: searchQuery,
+        })
+
+        if (response.success && response.data) {
+          if (isLoadMore) {
+            setAllOrders(prev => [...prev, ...response.data.orders])
+          } else {
+            setAllOrders(response.data.orders)
+          }
+
+          // Check if there are more pages
+          setHasMore(pageNum < response.data.totalPages)
+          setPage(pageNum)
+        } else {
+          toast.error(response.message || 'Failed to load orders')
+        }
+      } catch (error) {
+        toast.error('Failed to load orders')
+        console.error('Error fetching orders:', error)
+      } finally {
+        setLoading(false)
+        setFetching(false)
+        setIsLoadingMore(false)
       }
-
-      const response = await orderApi.getOrdersByAdmin({
-        page,
-        limit: pageSize,
-        orderStatus: statusParam,
-        search: searchQuery,
-      })
-
-      if (response.success && response.data) {
-        setAllOrders(response.data.orders)
-        setPagination(prev => ({
-          ...prev,
-          [activeTab]: {
-            currentPage: response.data.currentPage,
-            totalPages: response.data.totalPages,
-            totalOrders: response.data.totalOrders,
-            pageSize: response.data.pageSize,
-          },
-        }))
-      } else {
-        toast.error(response.message || 'Failed to load orders')
-      }
-    } catch (error) {
-      toast.error('Failed to load orders')
-      console.error('Error fetching orders:', error)
-    } finally {
-      setLoading(false)
-      setFetching(false)
-    }
-  }
+    },
+    [activeTab, searchQuery, pageSize]
+  )
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    fetchOrders(1, pagination[activeTab].pageSize)
+    setAllOrders([])
+    setPage(1)
+    setHasMore(true)
+    fetchOrders(1, false)
   }
 
-  const handlePageSizeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newPageSize = parseInt(e.target.value)
-    setPagination(prev => ({
-      ...prev,
-      [activeTab]: {
-        ...prev[activeTab],
-        pageSize: newPageSize,
+  // Load more function for infinite scroll
+  const loadMore = useCallback(() => {
+    if (!isLoadingMore && hasMore && !fetching) {
+      fetchOrders(page + 1, true)
+    }
+  }, [page, hasMore, isLoadingMore, fetching, fetchOrders])
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+          loadMore()
+        }
       },
-    }))
-    fetchOrders(1, newPageSize)
-  }
+      { threshold: 0.1 }
+    )
+
+    const sentinel = document.getElementById('scroll-sentinel')
+    if (sentinel) {
+      observer.observe(sentinel)
+    }
+
+    return () => {
+      if (sentinel) {
+        observer.unobserve(sentinel)
+      }
+    }
+  }, [hasMore, isLoadingMore, loadMore])
 
   useEffect(() => {
-    fetchOrders()
-  }, [activeTab, pagination[activeTab].pageSize, searchQuery])
+    setAllOrders([])
+    setPage(1)
+    setHasMore(true)
+    fetchOrders(1, false)
+  }, [activeTab, fetchOrders])
 
   const getStatusBadge = (status: OrderStatus) => {
     const baseClasses = 'px-2 py-1 rounded-full text-xs font-medium'
@@ -303,10 +337,6 @@ const AdminOrders = () => {
           response = await orderApi.cancelOrderByAdmin(selectedOrder.orderId, actionData.remarks)
           nextTab = 'others'
           break
-        // case 'reorder':
-        //   response = await orderApi.mardOrderAsFailedByAdmin(selectedOrder.orderId)
-        //   nextTab = 'pending'
-        //   break
         case 'refund':
           response = await orderApi.cancelOrderByAdmin(
             selectedOrder.orderId,
@@ -331,7 +361,10 @@ const AdminOrders = () => {
       if (response?.success) {
         toast.success(`Order ${getActionName(currentAction)} successfully`)
         setActiveTab(nextTab)
-        fetchOrders(1, pagination[nextTab].pageSize)
+        setAllOrders([])
+        setPage(1)
+        setHasMore(true)
+        fetchOrders(1, false)
         closeActionModal()
       } else {
         setActionError(response?.message || `Failed to ${getActionName(currentAction)} order`)
@@ -367,7 +400,6 @@ const AdminOrders = () => {
     }
   }
 
-  const currentPagination = pagination[activeTab]
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString('en-BD', {
@@ -378,6 +410,7 @@ const AdminOrders = () => {
       minute: '2-digit',
     })
   }
+
   const getSellerStatusBadge = (verified: boolean) => {
     return (
       <span
@@ -387,6 +420,129 @@ const AdminOrders = () => {
       >
         {verified ? 'Verified' : 'Unverified'}
       </span>
+    )
+  }
+
+  // Add these functions
+  const openPaymentVerificationModal = (payment: any, action: 'verify' | 'reject') => {
+    setSelectedPayment(payment)
+    setPaymentActionType(action)
+    setPaymentError(null)
+    setPaymentVerificationData({
+      transactionId: action === 'verify' ? '' : '',
+      remarks: '',
+    })
+    setShowPaymentVerificationModal(true)
+  }
+
+  const closePaymentVerificationModal = () => {
+    setShowPaymentVerificationModal(false)
+    setSelectedPayment(null)
+    setPaymentActionType(null)
+    setPaymentError(null)
+    setPaymentVerificationData({
+      transactionId: '',
+      remarks: '',
+    })
+  }
+
+  const handlePaymentActionSubmit = async () => {
+    if (!selectedPayment) return
+
+    try {
+      setPaymentProcessing(true)
+      setPaymentError(null)
+
+      if (paymentActionType === 'verify') {
+        if (!paymentVerificationData.transactionId) {
+          setPaymentError('Transaction ID is required')
+          return
+        }
+
+        const response = await paymentAPI.verifyPayment({
+          paymentId: selectedPayment.paymentId,
+          transactionId: paymentVerificationData.transactionId,
+        })
+
+        if (response?.success) {
+          toast.success('Payment verified successfully')
+          setAllOrders([])
+          setPage(1)
+          setHasMore(true)
+          fetchOrders(1, false)
+          closePaymentVerificationModal()
+        } else {
+          throw new Error(response?.message || 'Failed to verify payment')
+        }
+      } else if (paymentActionType === 'reject') {
+        const response = await paymentAPI.rejectPayment({
+          paymentId: selectedPayment.paymentId,
+          remarks: paymentVerificationData.remarks,
+        })
+
+        if (response.success) {
+          toast.success('Payment rejected successfully')
+          setAllOrders([])
+          setPage(1)
+          setHasMore(true)
+          fetchOrders(1, false)
+          closePaymentVerificationModal()
+        } else {
+          throw new Error(response.message || 'Failed to reject payment')
+        }
+      }
+    } catch (error) {
+      setPaymentError((error as Error).message || 'An error occurred')
+    } finally {
+      setPaymentProcessing(false)
+    }
+  }
+
+  const getPaymentTypeText = (type: string) => {
+    switch (type) {
+      case 'DUE_PAYMENT':
+        return 'Due Payment'
+      case 'ORDER_PAYMENT':
+        return 'Order Payment'
+      case 'WITHDRAWAL_PAYMENT':
+        return 'Withdrawal Payment'
+      default:
+        return type
+    }
+  }
+
+  const renderWalletFlow = (payment: any) => {
+    const senderWallet =
+      payment.sender === 'SELLER' || payment.sender === 'CUSTOMER'
+        ? `${payment.userWalletName} (${payment.userWalletPhoneNo})`
+        : `${payment.userWalletName} (${payment.systemWalletPhoneNo})`
+
+    const receiverWallet =
+      payment.sender === 'SELLER' || payment.sender === 'CUSTOMER'
+        ? `${payment.userWalletName} (${payment.systemWalletPhoneNo})`
+        : `${payment.userWalletName} (${payment.userWalletPhoneNo})`
+
+    return (
+      <div className='flex items-center text-xs'>
+        <div className='text-[10px] font-medium text-gray-700'>{senderWallet}</div>
+        <div className='mx-1 flex items-center text-xs'>
+          <svg
+            xmlns='http://www.w3.org/2000/svg'
+            className='h-4 w-4 text-gray-500 text-[10px]'
+            fill='none'
+            viewBox='0 0 24 24'
+            stroke='currentColor'
+          >
+            <path
+              strokeLinecap='round'
+              strokeLinejoin='round'
+              strokeWidth={2}
+              d='M13 5l7 7-7 7M5 5l7 7-7 7'
+            />
+          </svg>
+        </div>
+        <div className='text-[10px] font-medium text-gray-700'>{receiverWallet}</div>
+      </div>
     )
   }
 
@@ -408,16 +564,6 @@ const AdminOrders = () => {
             >
               Pending
             </button>
-            {/* <button
-              className={`px-3 py-2 text-[10px] md:text-sm ${
-                activeTab === 'confirmed'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-500'
-              }`}
-              onClick={() => setActiveTab('confirmed')}
-            >
-              Confirmed
-            </button> */}
             <button
               className={`px-3 py-2 text-[10px] md:text-sm ${
                 activeTab === 'delivered'
@@ -471,23 +617,11 @@ const AdminOrders = () => {
               />
               <FaSearch className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400' />
             </form>
-
-            <select
-              value={currentPagination.pageSize}
-              onChange={handlePageSizeChange}
-              className='border rounded-md px-2 py-1.5 text-xs md:text-sm'
-              disabled={fetching}
-            >
-              <option value='5'>5 per page</option>
-              <option value='10'>10 per page</option>
-              <option value='20'>20 per page</option>
-              <option value='50'>50 per page</option>
-            </select>
           </div>
         </div>
       </div>
 
-      {fetching ? (
+      {fetching && !isLoadingMore ? (
         <div className='flex justify-center items-center h-64'>
           <FaSpinner className='animate-spin text-blue-500 text-2xl' />
         </div>
@@ -591,7 +725,6 @@ const AdminOrders = () => {
                           readOnly
                           onClick={() => {
                             navigator.clipboard.writeText(order.trackingUrl || '')
-                            // tracking link is a external link should be opened in new tab
                             window.open(order.trackingUrl!)
                           }}
                           className='text-xs p-1 border rounded flex-1 w-24 truncate'
@@ -621,12 +754,21 @@ const AdminOrders = () => {
 
                   <div className='flex gap-2'>
                     {/* PAID - Show only Verify Payment */}
-                    {order.orderStatus === 'PAID' && (
-                      <NavLink to='/dashboard/payment-verification'>
-                        <button className='py-1 px-2 bg-blue-50 text-blue-600 rounded font-medium text-xs'>
+                    {order.orderStatus === 'PAID' && order.Payment && (
+                      <div className='flex gap-2 mt-2'>
+                        <button
+                          onClick={() => openPaymentVerificationModal(order.Payment, 'verify')}
+                          className='py-1 px-2 bg-green-50 text-green-600 rounded font-medium text-xs flex-1'
+                        >
                           Verify Payment
                         </button>
-                      </NavLink>
+                        <button
+                          onClick={() => openPaymentVerificationModal(order.Payment, 'reject')}
+                          className='py-1 px-2 bg-red-50 text-red-600 rounded font-medium text-xs flex-1'
+                        >
+                          Reject Payment
+                        </button>
+                      </div>
                     )}
 
                     {/* CONFIRMED - Show Deliver/Cancel if not cancelled */}
@@ -688,8 +830,6 @@ const AdminOrders = () => {
                         </button>
                       </>
                     )}
-
-                    {/* FAILED - Show Reorder option */}
                   </div>
                 </div>
               </div>
@@ -767,12 +907,21 @@ const AdminOrders = () => {
                       {/* UNPAID - No action buttons (hidden) */}
 
                       {/* PAID - Verify payment */}
-                      {order.orderStatus === 'PAID' && (
-                        <NavLink to='/dashboard/payment-verification'>
-                          <button className='text-blue-600 hover:text-blue-800'>
+                      {order.orderStatus === 'PAID' && order.Payment && (
+                        <div className='space-x-2'>
+                          <button
+                            onClick={() => openPaymentVerificationModal(order.Payment, 'verify')}
+                            className='text-green-600 hover:text-green-800 text-xs'
+                          >
                             Verify Payment
                           </button>
-                        </NavLink>
+                          <button
+                            onClick={() => openPaymentVerificationModal(order.Payment, 'reject')}
+                            className='text-red-600 hover:text-red-800 text-xs'
+                          >
+                            Reject Payment
+                          </button>
+                        </div>
                       )}
 
                       {/* CONFIRMED - Deliver or Cancel (regardless of payment) */}
@@ -841,123 +990,15 @@ const AdminOrders = () => {
             </table>
           </div>
 
-          {/* Pagination */}
-          {currentPagination.totalPages > 1 && (
-            <div className='bg-gray-50 px-4 py-3 flex items-center justify-between border-t border-gray-200'>
-              <div className='flex-1 flex justify-between sm:hidden'>
-                <button
-                  onClick={() => fetchOrders(currentPagination.currentPage - 1)}
-                  disabled={currentPagination.currentPage === 1 || fetching}
-                  className='relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50'
-                >
-                  Previous
-                </button>
-                <button
-                  onClick={() => fetchOrders(currentPagination.currentPage + 1)}
-                  disabled={
-                    currentPagination.currentPage === currentPagination.totalPages || fetching
-                  }
-                  className='ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50'
-                >
-                  Next
-                </button>
-              </div>
-
-              <div className='hidden sm:flex-1 sm:flex sm:items-center sm:justify-between'>
-                <div>
-                  <p className='text-sm text-gray-700'>
-                    Showing{' '}
-                    <span className='font-medium'>
-                      {(currentPagination.currentPage - 1) * currentPagination.pageSize + 1}
-                    </span>{' '}
-                    to{' '}
-                    <span className='font-medium'>
-                      {Math.min(
-                        currentPagination.currentPage * currentPagination.pageSize,
-                        currentPagination.totalOrders
-                      )}
-                    </span>{' '}
-                    of <span className='font-medium'>{currentPagination.totalOrders}</span> orders
-                  </p>
-                </div>
-                <div>
-                  <nav className='relative z-0 inline-flex rounded-md shadow-sm -space-x-px'>
-                    <button
-                      onClick={() => fetchOrders(currentPagination.currentPage - 1)}
-                      disabled={currentPagination.currentPage === 1 || fetching}
-                      className='relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50'
-                    >
-                      <span className='sr-only'>Previous</span>
-                      <svg
-                        className='h-5 w-5'
-                        xmlns='http://www.w3.org/2000/svg'
-                        viewBox='0 0 20 20'
-                        fill='currentColor'
-                        aria-hidden='true'
-                      >
-                        <path
-                          fillRule='evenodd'
-                          d='M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z'
-                          clipRule='evenodd'
-                        />
-                      </svg>
-                    </button>
-                    {Array.from({ length: Math.min(5, currentPagination.totalPages) }, (_, i) => {
-                      let pageNum
-                      if (currentPagination.totalPages <= 5) {
-                        pageNum = i + 1
-                      } else if (currentPagination.currentPage <= 3) {
-                        pageNum = i + 1
-                      } else if (
-                        currentPagination.currentPage >=
-                        currentPagination.totalPages - 2
-                      ) {
-                        pageNum = currentPagination.totalPages - 4 + i
-                      } else {
-                        pageNum = currentPagination.currentPage - 2 + i
-                      }
-                      return (
-                        <button
-                          key={pageNum}
-                          onClick={() => fetchOrders(pageNum)}
-                          disabled={fetching}
-                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                            pageNum === currentPagination.currentPage
-                              ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                          }`}
-                        >
-                          {pageNum}
-                        </button>
-                      )
-                    })}
-                    <button
-                      onClick={() => fetchOrders(currentPagination.currentPage + 1)}
-                      disabled={
-                        currentPagination.currentPage === currentPagination.totalPages || fetching
-                      }
-                      className='relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50'
-                    >
-                      <span className='sr-only'>Next</span>
-                      <svg
-                        className='h-5 w-5'
-                        xmlns='http://www.w3.org/2000/svg'
-                        viewBox='0 0 20 20'
-                        fill='currentColor'
-                        aria-hidden='true'
-                      >
-                        <path
-                          fillRule='evenodd'
-                          d='M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z'
-                          clipRule='evenodd'
-                        />
-                      </svg>
-                    </button>
-                  </nav>
-                </div>
-              </div>
+          {/* Loading indicator for infinite scroll */}
+          {isLoadingMore && (
+            <div className='flex justify-center items-center py-4'>
+              <FaSpinner className='animate-spin text-blue-500 text-xl' />
             </div>
           )}
+
+          {/* Scroll sentinel for infinite scroll */}
+          {hasMore && !isLoadingMore && <div id='scroll-sentinel' className='h-10' />}
         </div>
       )}
 
@@ -1653,6 +1694,176 @@ const AdminOrders = () => {
             setPreviewProductName('')
           }}
         />
+      )}
+      {/* Payment Verification Modal */}
+      {showPaymentVerificationModal && selectedPayment && (
+        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50'>
+          <div className='bg-white rounded-lg shadow-lg w-full max-w-md'>
+            <div className='p-3 sm:p-4 border-b'>
+              <h2 className='text-base sm:text-lg font-medium'>
+                {paymentActionType === 'verify'
+                  ? paymentProcessing
+                    ? 'Verifying Payment...'
+                    : 'Verify Payment'
+                  : paymentProcessing
+                  ? 'Rejecting Payment...'
+                  : 'Reject Payment'}
+              </h2>
+            </div>
+
+            <div className='p-3 sm:p-4 space-y-3 sm:space-y-4'>
+              <div className='bg-gray-50 p-2 sm:p-3 rounded-md'>
+                <div className='flex items-start'>
+                  <div className='flex-shrink-0 mt-0.5'>
+                    <svg
+                      className='h-5 w-5 text-blue-400'
+                      xmlns='http://www.w3.org/2000/svg'
+                      viewBox='0 0 20 20'
+                      fill='currentColor'
+                    >
+                      <path
+                        fillRule='evenodd'
+                        d='M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z'
+                        clipRule='evenodd'
+                      />
+                    </svg>
+                  </div>
+                  <div className='ml-2 sm:ml-3'>
+                    <h3 className='text-xs sm:text-sm font-medium text-gray-800'>
+                      Order # {selectedPayment.orderId}
+                    </h3>
+                    <div className='mt-1 sm:mt-2 text-xs sm:text-sm text-gray-700'>
+                      <p>
+                        User: {selectedPayment.userName} ({selectedPayment.userPhoneNo})
+                      </p>
+                      <p className='mt-1'>Amount: {selectedPayment.amount}৳</p>
+                      <p className='mt-1'>
+                        Type: {getPaymentTypeText(selectedPayment.paymentType)}
+                      </p>
+                      <div className='mt-2'>{renderWalletFlow(selectedPayment)}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {paymentError && (
+                <div className='bg-red-50 p-2 sm:p-3 rounded-md'>
+                  <div className='flex'>
+                    <div className='ml-3'>
+                      <div className='mt-1 text-xs sm:text-sm text-red-700'>
+                        <p>{paymentError}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {paymentActionType === 'verify' && (
+                <div>
+                  <label className='block text-xs sm:text-sm font-medium text-gray-700 mb-1'>
+                    Transaction ID *
+                  </label>
+                  <input
+                    type='text'
+                    name='transactionId'
+                    onChange={e =>
+                      setPaymentVerificationData(prev => ({
+                        ...prev,
+                        transactionId: e.target.value,
+                      }))
+                    }
+                    placeholder='Enter transaction ID'
+                    className='w-full px-2 sm:px-3 py-1 sm:py-2 border rounded-md text-xs sm:text-sm'
+                    required
+                  />
+                </div>
+              )}
+
+              {(paymentActionType === 'verify' || paymentActionType === 'reject') && (
+                <div>
+                  <label className='block text-xs sm:text-sm font-medium text-gray-700 mb-1'>
+                    {paymentActionType === 'verify' ? 'Remarks (Optional)' : 'Reason (Optional)'}
+                  </label>
+                  <textarea
+                    name='remarks'
+                    value={paymentVerificationData.remarks}
+                    onChange={e =>
+                      setPaymentVerificationData(prev => ({
+                        ...prev,
+                        remarks: e.target.value,
+                      }))
+                    }
+                    placeholder={
+                      paymentActionType === 'verify' ? 'Enter remarks' : 'Enter rejection reason'
+                    }
+                    rows={3}
+                    className='w-full px-2 sm:px-3 py-1 sm:py-2 border rounded-md text-xs sm:text-sm'
+                  />
+                </div>
+              )}
+
+              {paymentActionType === 'reject' && (
+                <div className='bg-red-50 p-2 sm:p-3 rounded-md border border-red-200'>
+                  <div className='flex items-start'>
+                    <div className='flex-shrink-0 pt-0.5'>
+                      <svg
+                        className='h-4 sm:h-5 w-4 sm:w-5 text-red-400'
+                        xmlns='http://www.w3.org/2000/svg'
+                        viewBox='0 0 20 20'
+                        fill='currentColor'
+                      >
+                        <path
+                          fillRule='evenodd'
+                          d='M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z'
+                          clipRule='evenodd'
+                        />
+                      </svg>
+                    </div>
+                    <div className='ml-2 sm:ml-3'>
+                      <h3 className='text-xs sm:text-sm font-medium text-red-800'>
+                        You are about to reject this payment
+                      </h3>
+                      <div className='mt-1 text-xs sm:text-sm text-red-700'>
+                        <p>This action cannot be undone.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className='p-3 sm:p-4 border-t flex justify-end gap-2 sm:gap-3'>
+              <button
+                onClick={closePaymentVerificationModal}
+                disabled={paymentProcessing}
+                className='px-3 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50'
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePaymentActionSubmit}
+                disabled={
+                  paymentProcessing ||
+                  (paymentActionType === 'verify' && !paymentVerificationData.transactionId)
+                }
+                className={`px-3 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm font-medium text-white rounded-md hover:opacity-90 disabled:opacity-50 flex items-center justify-center min-w-20 sm:min-w-24 ${
+                  paymentActionType === 'reject'
+                    ? 'bg-red-600 hover:bg-red-700'
+                    : 'bg-green-600 hover:bg-green-700'
+                }`}
+              >
+                {paymentProcessing ? (
+                  <FaSpinner className='animate-spin' />
+                ) : (
+                  <>
+                    {paymentActionType === 'verify' && 'Verify'}
+                    {paymentActionType === 'reject' && 'Reject'}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

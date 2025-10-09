@@ -34,9 +34,9 @@ export interface BackendNotification {
   targetUserIds: string[]
   readBy: string[]
   isDelivered: boolean
-  deliveredAt?: string
-  createdAt: string
-  updatedAt: string
+  deliveredAt?: Date
+  createdAt: Date
+  updatedAt: Date
 }
 
 export interface FrontendNotification {

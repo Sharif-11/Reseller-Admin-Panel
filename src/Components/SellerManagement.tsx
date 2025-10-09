@@ -11,8 +11,8 @@ import {
   WalletIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline'
-import { useEffect, useState } from 'react'
-import { FaMinus, FaMoneyBillWave, FaPlus } from 'react-icons/fa'
+import { useCallback, useEffect, useState } from 'react'
+import { FaMinus, FaMoneyBillWave, FaPlus, FaSpinner } from 'react-icons/fa'
 import { authService } from '../Api/auth.api'
 import { blockApiService, type BlockActionType } from '../Api/block.api'
 import { transactionApi } from '../Api/transaction.api'
@@ -22,10 +22,9 @@ const SellerManagement = () => {
   // State management
   const [sellers, setSellers] = useState<User[]>([])
   const [filteredSellers, setFilteredSellers] = useState<User[]>([])
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
   const [searchTerm, setSearchTerm] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [selectedSeller, setSelectedSeller] = useState<User | null>(null)
@@ -34,7 +33,6 @@ const SellerManagement = () => {
   const [userBlockActions, setUserBlockActions] = useState<BlockActionType[]>([])
   const [availableBlockActions, setAvailableBlockActions] = useState<BlockActionType[]>([])
   const [selectedActions, setSelectedActions] = useState<BlockActionType[]>([])
-  const [pageSize, setPageSize] = useState(10)
   const [balanceModalOpen, setBalanceModalOpen] = useState(false)
   const [amountToAdd, setAmountToAdd] = useState('')
   const [amountToDeduct, setAmountToDeduct] = useState('')
@@ -42,31 +40,53 @@ const SellerManagement = () => {
   const [processingBalance, setProcessingBalance] = useState(false)
   const [verifyModalOpen, setVerifyModalOpen] = useState(false)
 
-  // Fetch sellers
-  const fetchSellers = async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const response = await userManagementApiService.getAllUsers({
-        page: currentPage,
-        limit: pageSize,
-        role: 'Seller',
-        searchTerm,
-      })
+  // Infinite scroll state
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const pageSize = 10
 
-      if (response.success && response.data) {
-        setSellers(response.data.users)
-        setFilteredSellers(response.data.users)
-        setTotalPages(Math.ceil(response.data.totalCount / pageSize))
-      } else {
-        setError(response.message || 'Failed to fetch sellers')
+  // Fetch sellers
+  const fetchSellers = useCallback(
+    async (pageNum = 1, isLoadMore = false) => {
+      try {
+        if (isLoadMore) {
+          setIsLoadingMore(true)
+        } else {
+          setIsLoading(true)
+          setPage(1)
+        }
+
+        const response = await userManagementApiService.getAllUsers({
+          page: pageNum,
+          limit: pageSize,
+          role: 'Seller',
+          searchTerm,
+        })
+
+        if (response.success && response.data) {
+          if (isLoadMore) {
+            setSellers(prev => [...prev, ...(response?.data?.users || [])])
+            setFilteredSellers(prev => [...prev, ...(response?.data?.users || [])])
+          } else {
+            setSellers(response?.data?.users)
+            setFilteredSellers(response?.data?.users)
+          }
+
+          // Check if there are more pages
+          setHasMore(pageNum < Math.ceil(response?.data?.totalCount / pageSize))
+          setPage(pageNum)
+        } else {
+          setError(response.message || 'Failed to fetch sellers')
+        }
+      } catch (err) {
+        setError('Failed to fetch sellers')
+      } finally {
+        setIsLoading(false)
+        setIsLoadingMore(false)
       }
-    } catch (err) {
-      setError('Failed to fetch sellers')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+    },
+    [searchTerm, pageSize]
+  )
 
   // Fetch all available block action types
   const fetchAvailableBlockActions = async () => {
@@ -96,8 +116,12 @@ const SellerManagement = () => {
   // Handle search
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value)
-    setCurrentPage(1)
+    setSellers([])
+    setFilteredSellers([])
+    setPage(1)
+    setHasMore(true)
   }
+
   const openBalanceModal = (seller: User) => {
     setSelectedSeller(seller)
     setBalanceModalOpen(true)
@@ -109,6 +133,7 @@ const SellerManagement = () => {
     setAmountToDeduct('')
     setBalanceNote('')
   }
+
   const openVerifyModal = (seller: User) => {
     setSelectedSeller(seller)
     setVerifyModalOpen(true)
@@ -118,6 +143,7 @@ const SellerManagement = () => {
     setVerifyModalOpen(false)
     setSelectedSeller(null)
   }
+
   const handleVerifySeller = async () => {
     if (!selectedSeller) return
 
@@ -126,7 +152,11 @@ const SellerManagement = () => {
 
       if (response.success) {
         setSuccess(`Seller ${selectedSeller.name} has been verified successfully`)
-        fetchSellers() // Refresh the list
+        setSellers([])
+        setFilteredSellers([])
+        setPage(1)
+        setHasMore(true)
+        fetchSellers(1, false)
         closeVerifyModal()
       } else {
         setError(response.message || 'Failed to verify seller')
@@ -153,7 +183,11 @@ const SellerManagement = () => {
 
       if (response.success) {
         setSuccess(`Successfully added ${amountToAdd} TK to ${selectedSeller.name}'s balance`)
-        fetchSellers() // Refresh the seller list
+        setSellers([])
+        setFilteredSellers([])
+        setPage(1)
+        setHasMore(true)
+        fetchSellers(1, false)
         closeBalanceModal()
       } else {
         setError(response.message || 'Failed to add balance')
@@ -184,7 +218,11 @@ const SellerManagement = () => {
         setSuccess(
           `Successfully deducted ${amountToDeduct} TK from ${selectedSeller.name}'s balance`
         )
-        fetchSellers() // Refresh the seller list
+        setSellers([])
+        setFilteredSellers([])
+        setPage(1)
+        setHasMore(true)
+        fetchSellers(1, false)
         closeBalanceModal()
       } else {
         setError(response.message || 'Failed to deduct balance')
@@ -211,10 +249,45 @@ const SellerManagement = () => {
     }
   }, [searchTerm, sellers])
 
-  // Handle page change
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page)
-  }
+  // Load more function for infinite scroll
+  const loadMore = useCallback(() => {
+    if (!isLoadingMore && hasMore && !isLoading) {
+      fetchSellers(page + 1, true)
+    }
+  }, [page, hasMore, isLoadingMore, isLoading, fetchSellers])
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+          loadMore()
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    const sentinel = document.getElementById('scroll-sentinel')
+    if (sentinel) {
+      observer.observe(sentinel)
+    }
+
+    return () => {
+      if (sentinel) {
+        observer.unobserve(sentinel)
+      }
+    }
+  }, [hasMore, isLoadingMore, loadMore])
+
+  // Initialize
+  useEffect(() => {
+    setSellers([])
+    setFilteredSellers([])
+    setPage(1)
+    setHasMore(true)
+    fetchSellers(1, false)
+    fetchAvailableBlockActions()
+  }, [searchTerm, fetchSellers])
 
   // Handle block/unblock actions
   const handleBlockActions = async () => {
@@ -251,8 +324,6 @@ const SellerManagement = () => {
     if (!selectedSeller || !messageContent.trim()) return
 
     try {
-      // Here you would call your API to send the message
-      // setSuccess(`Message sent to ${selectedSeller.name}`)
       const { success, message } = await authService.sendDirectMessage({
         userId: selectedSeller.userId,
         content: messageContent,
@@ -297,12 +368,6 @@ const SellerManagement = () => {
     setActiveModal(null)
     setSelectedSeller(null)
   }
-
-  // Initialize
-  useEffect(() => {
-    fetchSellers()
-    fetchAvailableBlockActions()
-  }, [currentPage, pageSize, searchTerm])
 
   // Close messages after 5 seconds
   useEffect(() => {
@@ -380,111 +445,111 @@ const SellerManagement = () => {
             onChange={handleSearch}
           />
         </div>
-        <div className='flex items-center space-x-2'>
-          <select
-            className='rounded-md border border-gray-300 bg-white py-2 pl-3 pr-8 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500'
-            value={pageSize}
-            onChange={e => setPageSize(Number(e.target.value))}
-          >
-            <option value={10}>10 per page</option>
-            <option value={25}>25 per page</option>
-            <option value={50}>50 per page</option>
-            <option value={100}>100 per page</option>
-          </select>
-        </div>
       </div>
 
       {/* Mobile View - Card List */}
       <div className='sm:hidden space-y-3'>
-        {isLoading ? (
+        {isLoading && !isLoadingMore ? (
           <div className='flex justify-center py-8'>
             <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600'></div>
           </div>
-        ) : filteredSellers.length === 0 ? (
+        ) : filteredSellers.length === 0 && !isLoading ? (
           <div className='rounded-lg bg-white p-4 shadow text-center'>
             {searchTerm ? 'No sellers found' : 'No sellers available'}
           </div>
         ) : (
-          filteredSellers.map(seller => (
-            <div key={seller.userId} className='rounded-lg bg-white p-4 shadow'>
-              <div className='flex items-start space-x-3'>
-                <div className='flex-shrink-0'>
-                  {seller.profileImage ? (
-                    <img
-                      src={seller.profileImage}
-                      alt={`${seller.name}'s profile`}
-                      className='h-10 w-10 rounded-full object-cover'
-                    />
-                  ) : (
-                    <UserCircleIcon className='h-10 w-10 text-gray-400' aria-hidden='true' />
-                  )}
-                </div>
-                <div className='flex-1 min-w-0'>
-                  <div className='flex justify-between'>
-                    <h3 className='text-sm font-medium text-gray-900 truncate'>{seller.name}</h3>
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        seller.isVerified
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}
-                    >
-                      {seller.isVerified ? 'Verified' : 'Unverified'}
-                    </span>
+          <>
+            {filteredSellers.map(seller => (
+              <div key={seller.userId} className='rounded-lg bg-white p-4 shadow'>
+                <div className='flex items-start space-x-3'>
+                  <div className='flex-shrink-0'>
+                    {seller.profileImage ? (
+                      <img
+                        src={seller.profileImage}
+                        alt={`${seller.name}'s profile`}
+                        className='h-10 w-10 rounded-full object-cover'
+                      />
+                    ) : (
+                      <UserCircleIcon className='h-10 w-10 text-gray-400' aria-hidden='true' />
+                    )}
                   </div>
-                  <div className='mt-1 text-sm text-gray-500 truncate'>
-                    <div className='flex items-center'>
-                      <PhoneIcon className='mr-1 h-3.5 w-3.5' />
-                      {seller.phoneNo}
+                  <div className='flex-1 min-w-0'>
+                    <div className='flex justify-between'>
+                      <h3 className='text-sm font-medium text-gray-900 truncate'>{seller.name}</h3>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          seller.isVerified
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}
+                      >
+                        {seller.isVerified ? 'Verified' : 'Unverified'}
+                      </span>
                     </div>
-                    <div className='mt-1 truncate'>{seller.shopName}</div>
-                    <div className='mt-1 text-xs text-gray-400'>
-                      {seller.upazilla}, {seller.zilla}
+                    <div className='mt-1 text-sm text-gray-500 truncate'>
+                      <div className='flex items-center'>
+                        <PhoneIcon className='mr-1 h-3.5 w-3.5' />
+                        {seller.phoneNo}
+                      </div>
+                      <div className='mt-1 truncate'>{seller.shopName}</div>
+                      <div className='mt-1 text-xs text-gray-400'>
+                        {seller.upazilla}, {seller.zilla}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              <div className='mt-3 flex justify-end space-x-1'>
-                <button
-                  type='button'
-                  onClick={() => openBlockModal(seller)}
-                  className='inline-flex items-center rounded-md border border-gray-300 bg-white p-1 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2'
-                >
-                  <ShieldExclamationIcon className='h-3.5 w-3.5' />
-                </button>
-                <button
-                  type='button'
-                  onClick={() => openMessageModal(seller)}
-                  className='inline-flex items-center rounded-md border border-transparent bg-indigo-600 p-1 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2'
-                >
-                  <PaperAirplaneIcon className='h-3.5 w-3.5' />
-                </button>
-                <button
-                  type='button'
-                  onClick={() => openDetailsModal(seller)}
-                  className='inline-flex items-center rounded-md border border-gray-300 bg-white p-1 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2'
-                >
-                  <EyeIcon className='h-3.5 w-3.5' />
-                </button>
-                <button
-                  onClick={() => openBalanceModal(seller)}
-                  className='inline-flex items-center rounded-md border border-gray-300 bg-white p-1 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2'
-                >
-                  <FaMoneyBillWave className='h-3.5 w-3.5' />
-                </button>
-                {!seller.isVerified && (
+                <div className='mt-3 flex justify-end space-x-1'>
                   <button
                     type='button'
-                    onClick={() => openVerifyModal(seller)}
-                    className='inline-flex items-center rounded-md border border-transparent bg-green-600 p-1 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2'
-                    title='Verify Seller'
+                    onClick={() => openBlockModal(seller)}
+                    className='inline-flex items-center rounded-md border border-gray-300 bg-white p-1 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2'
                   >
-                    <CheckCircleIcon className='h-3.5 w-3.5' />
+                    <ShieldExclamationIcon className='h-3.5 w-3.5' />
                   </button>
-                )}
+                  <button
+                    type='button'
+                    onClick={() => openMessageModal(seller)}
+                    className='inline-flex items-center rounded-md border border-transparent bg-indigo-600 p-1 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2'
+                  >
+                    <PaperAirplaneIcon className='h-3.5 w-3.5' />
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => openDetailsModal(seller)}
+                    className='inline-flex items-center rounded-md border border-gray-300 bg-white p-1 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2'
+                  >
+                    <EyeIcon className='h-3.5 w-3.5' />
+                  </button>
+                  <button
+                    onClick={() => openBalanceModal(seller)}
+                    className='inline-flex items-center rounded-md border border-gray-300 bg-white p-1 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2'
+                  >
+                    <FaMoneyBillWave className='h-3.5 w-3.5' />
+                  </button>
+                  {!seller.isVerified && (
+                    <button
+                      type='button'
+                      onClick={() => openVerifyModal(seller)}
+                      className='inline-flex items-center rounded-md border border-transparent bg-green-600 p-1 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2'
+                      title='Verify Seller'
+                    >
+                      <CheckCircleIcon className='h-3.5 w-3.5' />
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))
+            ))}
+
+            {/* Loading indicator for infinite scroll */}
+            {isLoadingMore && (
+              <div className='flex justify-center py-4'>
+                <FaSpinner className='animate-spin text-indigo-500 text-xl' />
+              </div>
+            )}
+
+            {/* Scroll sentinel for infinite scroll */}
+            {hasMore && !isLoadingMore && <div id='scroll-sentinel' className='h-10' />}
+          </>
         )}
       </div>
 
@@ -526,7 +591,7 @@ const SellerManagement = () => {
             </tr>
           </thead>
           <tbody className='bg-white divide-y divide-gray-200'>
-            {isLoading ? (
+            {isLoading && !isLoadingMore ? (
               <tr>
                 <td colSpan={5} className='px-6 py-4 text-center'>
                   <div className='flex justify-center py-8'>
@@ -534,228 +599,133 @@ const SellerManagement = () => {
                   </div>
                 </td>
               </tr>
-            ) : filteredSellers.length === 0 ? (
+            ) : filteredSellers.length === 0 && !isLoading ? (
               <tr>
                 <td colSpan={5} className='px-6 py-4 text-center text-gray-500'>
                   {searchTerm ? 'No sellers found' : 'No sellers available'}
                 </td>
               </tr>
             ) : (
-              filteredSellers.map(seller => (
-                <tr key={seller.userId} className='hover:bg-gray-50'>
-                  <td className='px-6 py-4 whitespace-nowrap'>
-                    <div className='flex items-center'>
-                      <div className='flex-shrink-0 h-10 w-10'>
-                        {seller.profileImage ? (
-                          <img
-                            src={seller.profileImage}
-                            alt={`${seller.name}'s profile`}
-                            className='h-10 w-10 rounded-full object-cover'
-                          />
-                        ) : (
-                          <UserCircleIcon className='h-10 w-10 text-gray-400' aria-hidden='true' />
-                        )}
-                      </div>
-                      <div className='ml-4'>
-                        <div className='text-sm font-medium text-gray-900'>{seller.name}</div>
-                        <div className='text-sm text-gray-500'>{seller.shopName}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className='px-6 py-4 whitespace-nowrap'>
-                    <div className='text-sm text-gray-900'>
+              <>
+                {filteredSellers.map(seller => (
+                  <tr key={seller.userId} className='hover:bg-gray-50'>
+                    <td className='px-6 py-4 whitespace-nowrap'>
                       <div className='flex items-center'>
-                        <PhoneIcon className='mr-1 h-4 w-4 text-gray-500' />
-                        {seller.phoneNo}
-                      </div>
-                    </div>
-                    {seller.email && (
-                      <div className='text-sm text-gray-500'>
-                        <div className='flex items-center'>
-                          <EnvelopeIcon className='mr-1 h-4 w-4 text-gray-500' />
-                          {seller.email}
+                        <div className='flex-shrink-0 h-10 w-10'>
+                          {seller.profileImage ? (
+                            <img
+                              src={seller.profileImage}
+                              alt={`${seller.name}'s profile`}
+                              className='h-10 w-10 rounded-full object-cover'
+                            />
+                          ) : (
+                            <UserCircleIcon
+                              className='h-10 w-10 text-gray-400'
+                              aria-hidden='true'
+                            />
+                          )}
+                        </div>
+                        <div className='ml-4'>
+                          <div className='text-sm font-medium text-gray-900'>{seller.name}</div>
+                          <div className='text-sm text-gray-500'>{seller.shopName}</div>
                         </div>
                       </div>
-                    )}
-                  </td>
-                  <td className='px-6 py-4'>
-                    <div className='text-sm text-gray-900'>{seller.address}</div>
-                    <div className='text-sm text-gray-500'>
-                      {seller.upazilla}, {seller.zilla}
-                    </div>
-                  </td>
-                  <td className='px-6 py-4 whitespace-nowrap'>
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        seller.isVerified
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}
-                    >
-                      {seller.isVerified ? 'Verified' : 'Unverified'}
-                    </span>
-                  </td>
-                  <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium'>
-                    <div className='flex justify-end space-x-2'>
-                      <button
-                        onClick={() => openBlockModal(seller)}
-                        className='text-indigo-600 hover:text-indigo-900'
-                        title='Block Actions'
-                      >
-                        <ShieldExclamationIcon className='h-5 w-5' />
-                      </button>
-                      <button
-                        onClick={() => openMessageModal(seller)}
-                        className='text-green-600 hover:text-green-900'
-                        title='Send Message'
-                      >
-                        <PaperAirplaneIcon className='h-5 w-5' />
-                      </button>
-                      <button
-                        onClick={() => openDetailsModal(seller)}
-                        className='text-blue-600 hover:text-blue-900'
-                        title='View Details'
-                      >
-                        <EyeIcon className='h-5 w-5' />
-                      </button>
-                      <button
-                        onClick={() => openBalanceModal(seller)}
-                        className='text-yellow-600 hover:text-yellow-900'
-                        title='Update Balance'
-                      >
-                        <FaMoneyBillWave className='h-5 w-5' />
-                      </button>
-                      {!seller.isVerified && (
-                        <button
-                          onClick={() => openVerifyModal(seller)}
-                          className='text-green-600 hover:text-green-900'
-                          title='Verify Seller'
-                        >
-                          <CheckCircleIcon className='h-5 w-5' />
-                        </button>
+                    </td>
+                    <td className='px-6 py-4 whitespace-nowrap'>
+                      <div className='text-sm text-gray-900'>
+                        <div className='flex items-center'>
+                          <PhoneIcon className='mr-1 h-4 w-4 text-gray-500' />
+                          {seller.phoneNo}
+                        </div>
+                      </div>
+                      {seller.email && (
+                        <div className='text-sm text-gray-500'>
+                          <div className='flex items-center'>
+                            <EnvelopeIcon className='mr-1 h-4 w-4 text-gray-500' />
+                            {seller.email}
+                          </div>
+                        </div>
                       )}
-                    </div>
-                  </td>
-                </tr>
-              ))
+                    </td>
+                    <td className='px-6 py-4'>
+                      <div className='text-sm text-gray-900'>{seller.address}</div>
+                      <div className='text-sm text-gray-500'>
+                        {seller.upazilla}, {seller.zilla}
+                      </div>
+                    </td>
+                    <td className='px-6 py-4 whitespace-nowrap'>
+                      <span
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          seller.isVerified
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}
+                      >
+                        {seller.isVerified ? 'Verified' : 'Unverified'}
+                      </span>
+                    </td>
+                    <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium'>
+                      <div className='flex justify-end space-x-2'>
+                        <button
+                          onClick={() => openBlockModal(seller)}
+                          className='text-indigo-600 hover:text-indigo-900'
+                          title='Block Actions'
+                        >
+                          <ShieldExclamationIcon className='h-5 w-5' />
+                        </button>
+                        <button
+                          onClick={() => openMessageModal(seller)}
+                          className='text-green-600 hover:text-green-900'
+                          title='Send Message'
+                        >
+                          <PaperAirplaneIcon className='h-5 w-5' />
+                        </button>
+                        <button
+                          onClick={() => openDetailsModal(seller)}
+                          className='text-blue-600 hover:text-blue-900'
+                          title='View Details'
+                        >
+                          <EyeIcon className='h-5 w-5' />
+                        </button>
+                        <button
+                          onClick={() => openBalanceModal(seller)}
+                          className='text-yellow-600 hover:text-yellow-900'
+                          title='Update Balance'
+                        >
+                          <FaMoneyBillWave className='h-5 w-5' />
+                        </button>
+                        {!seller.isVerified && (
+                          <button
+                            onClick={() => openVerifyModal(seller)}
+                            className='text-green-600 hover:text-green-900'
+                            title='Verify Seller'
+                          >
+                            <CheckCircleIcon className='h-5 w-5' />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+
+                {/* Loading row for infinite scroll */}
+                {isLoadingMore && (
+                  <tr>
+                    <td colSpan={5} className='px-6 py-4 text-center'>
+                      <div className='flex justify-center'>
+                        <FaSpinner className='animate-spin text-indigo-500 text-xl' />
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </>
             )}
           </tbody>
         </table>
+
+        {/* Scroll sentinel for infinite scroll */}
+        {hasMore && !isLoadingMore && <div id='scroll-sentinel' className='h-10' />}
       </div>
-
-      {/* Pagination */}
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className='mt-4 flex items-center justify-between'>
-          {/* Mobile pagination */}
-          <div className='flex flex-1 items-center justify-between sm:hidden'>
-            <button
-              onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-              className='relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-            >
-              Previous
-            </button>
-            <div className='text-sm text-gray-700'>
-              Page <span className='font-medium'>{currentPage}</span> of{' '}
-              <span className='font-medium'>{totalPages}</span>
-            </div>
-            <button
-              onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage === totalPages}
-              className='relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-            >
-              Next
-            </button>
-          </div>
-
-          {/* Desktop pagination */}
-          <div className='hidden sm:flex-1 sm:flex sm:items-center sm:justify-between'>
-            <div>
-              <p className='text-sm text-gray-700'>
-                Showing <span className='font-medium'>{(currentPage - 1) * pageSize + 1}</span> to{' '}
-                <span className='font-medium'>
-                  {Math.min(currentPage * pageSize, filteredSellers.length)}
-                </span>{' '}
-                of <span className='font-medium'>{filteredSellers.length}</span> sellers
-              </p>
-            </div>
-            <div>
-              <nav
-                className='relative z-0 inline-flex rounded-md shadow-sm -space-x-px'
-                aria-label='Pagination'
-              >
-                <button
-                  onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                  className='relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-                >
-                  <span className='sr-only'>Previous</span>
-                  <svg
-                    className='h-5 w-5'
-                    xmlns='http://www.w3.org/2000/svg'
-                    viewBox='0 0 20 20'
-                    fill='currentColor'
-                    aria-hidden='true'
-                  >
-                    <path
-                      fillRule='evenodd'
-                      d='M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z'
-                      clipRule='evenodd'
-                    />
-                  </svg>
-                </button>
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum
-                  if (totalPages <= 5) {
-                    pageNum = i + 1
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i
-                  } else {
-                    pageNum = currentPage - 2 + i
-                  }
-
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => handlePageChange(pageNum)}
-                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                        currentPage === pageNum
-                          ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
-                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  )
-                })}
-                <button
-                  onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                  className='relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-                >
-                  <span className='sr-only'>Next</span>
-                  <svg
-                    className='h-5 w-5'
-                    xmlns='http://www.w3.org/2000/svg'
-                    viewBox='0 0 20 20'
-                    fill='currentColor'
-                    aria-hidden='true'
-                  >
-                    <path
-                      fillRule='evenodd'
-                      d='M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z'
-                      clipRule='evenodd'
-                    />
-                  </svg>
-                </button>
-              </nav>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Seller Details Modal */}
       {activeModal === 'detail' && selectedSeller && (
@@ -837,7 +807,6 @@ const SellerManagement = () => {
                         )}
                       </p>
                     </div>
-                    {/* we need to display the referrer information in another section (Name-Phone) within one line */}
                     {selectedSeller.referredBy && (
                       <div>
                         <h4 className='text-sm font-medium text-gray-500'>Referred By</h4>
@@ -890,7 +859,7 @@ const SellerManagement = () => {
                           ))}
                         </div>
                       </div>
-                    )}{' '}
+                    )}
                     {selectedSeller._count?.referrals !== undefined && (
                       <div>
                         <h4 className='text-sm font-medium text-gray-500'>Total Referrals</h4>
@@ -1059,6 +1028,8 @@ const SellerManagement = () => {
           </div>
         </div>
       )}
+
+      {/* Balance Modal */}
       {balanceModalOpen && selectedSeller && (
         <div className='fixed inset-0 z-50 overflow-y-auto'>
           <div className='flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0'>
@@ -1288,6 +1259,8 @@ const SellerManagement = () => {
           </div>
         </div>
       )}
+
+      {/* Verify Modal */}
       {verifyModalOpen && selectedSeller && (
         <div className='fixed inset-0 z-50 overflow-y-auto'>
           <div className='flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0'>
@@ -1316,18 +1289,6 @@ const SellerManagement = () => {
                     আপনি কি নিশ্চিত যে আপনি <strong>{selectedSeller.name}</strong> কে ভেরিফাই করতে
                     চান?
                   </p>
-                  {/* <div className='mt-3 bg-yellow-50 border border-yellow-200 rounded-md p-3'>
-                    <div className='flex'>
-                      <div className='flex-shrink-0'>
-                        <ShieldExclamationIcon className='h-5 w-5 text-yellow-400' />
-                      </div>
-                      <div className='ml-3'>
-                        <p className='text-sm text-yellow-700'>
-                          This action will grant the seller full access to all platform features.
-                        </p>
-                      </div>
-                    </div>
-                  </div> */}
                 </div>
               </div>
               <div className='bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse'>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
 import { transactionApi } from '../Api/transaction.api'
 
@@ -26,13 +26,11 @@ interface TransactionResponse {
 const AdminBalanceStatement = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([])
-  const [pagination, setPagination] = useState({
-    currentPage: 1,
-    pageSize: 10,
-    totalCount: 0,
-  })
+  const [hasMore, setHasMore] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
   const [, setSummary] = useState({
     totalRevenue: 0,
     totalCredit: 0,
@@ -40,27 +38,34 @@ const AdminBalanceStatement = () => {
   })
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
 
-  const fetchTransactions = async (
-    page: number = pagination.currentPage,
-    pageSize: number = pagination.pageSize
-  ) => {
-    setLoading(true)
+  const fetchTransactions = async (page: number = 1, isLoadMore: boolean = false) => {
+    if (isLoadMore) {
+      setLoadingMore(true)
+    } else {
+      setLoading(true)
+    }
+
     try {
       const response = await transactionApi.getTransactions({
         page,
-        limit: pageSize,
+        limit: 10, // Fixed page size for infinite scroll
         search: searchTerm,
       })
 
       if (response.success && response.data) {
         const data = response.data as TransactionResponse
-        setTransactions(data.transactions)
-        setFilteredTransactions(data.transactions)
-        setPagination({
-          currentPage: data.currentPage,
-          pageSize: data.pageSize,
-          totalCount: data.totalCount,
-        })
+
+        if (isLoadMore) {
+          setTransactions(prev => [...prev, ...data.transactions])
+        } else {
+          setTransactions(data.transactions)
+        }
+
+        setCurrentPage(data.currentPage)
+        setTotalCount(data.totalCount)
+        setHasMore(
+          data.transactions.length > 0 && data.currentPage * data.pageSize < data.totalCount
+        )
         setSummary({
           totalRevenue: data.totalRevenue,
           totalCredit: data.totalCredit,
@@ -74,37 +79,44 @@ const AdminBalanceStatement = () => {
       console.error('Transactions fetch error:', error)
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
   }
 
+  // Debounced search
   useEffect(() => {
-    if (searchTerm) {
-      const filtered = transactions.filter(
-        tx =>
-          tx.reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          tx.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          tx.userPhoneNo.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-      setFilteredTransactions(filtered)
-    } else {
-      setFilteredTransactions(transactions)
-    }
-  }, [searchTerm, transactions])
+    const timeoutId = setTimeout(() => {
+      setTransactions([])
+      setCurrentPage(1)
+      setHasMore(true)
+      fetchTransactions(1, false)
+    }, 500)
 
+    return () => clearTimeout(timeoutId)
+  }, [searchTerm])
+
+  // Initial load
   useEffect(() => {
-    fetchTransactions()
+    fetchTransactions(1, false)
   }, [])
 
-  const handlePageChange = (newPage: number) => {
-    setPagination(prev => ({ ...prev, currentPage: newPage }))
-    fetchTransactions(newPage)
-  }
+  // Infinite scroll handler
+  const handleScroll = useCallback(() => {
+    if (loading || loadingMore || !hasMore) return
 
-  const handlePageSizeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newPageSize = parseInt(e.target.value)
-    setPagination(prev => ({ ...prev, pageSize: newPageSize, currentPage: 1 }))
-    fetchTransactions(1, newPageSize)
-  }
+    const { scrollTop, scrollHeight, clientHeight } = document.documentElement
+
+    // Load more when user is 100px from bottom
+    if (scrollHeight - scrollTop <= clientHeight + 100) {
+      fetchTransactions(currentPage + 1, true)
+    }
+  }, [loading, loadingMore, hasMore, currentPage])
+
+  // Add scroll event listener
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [handleScroll])
 
   const showTransactionDetails = (transaction: Transaction) => {
     setSelectedTransaction(transaction)
@@ -128,6 +140,7 @@ const AdminBalanceStatement = () => {
 
     return <p className='text-gray-900'>{reference}</p>
   }
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString('bn-BD', {
@@ -147,15 +160,15 @@ const AdminBalanceStatement = () => {
       <div className='grid grid-cols-1 md:grid-cols-3 gap-4 mb-6'>
         <div className='bg-white rounded-lg shadow p-4'>
           <h2 className='text-sm font-medium text-gray-700'>মোট লেনদেন</h2>
-          <p className='text-xl font-bold'>{pagination.totalCount}</p>
+          <p className='text-xl font-bold'>{totalCount}</p>
         </div>
       </div>
 
       {/* Transaction History */}
       <div className='bg-white rounded-lg shadow overflow-hidden'>
-        {/* Search and Filter Section */}
-        <div className='p-3 md:p-4 border-b flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-3'>
-          <div className='relative flex-1'>
+        {/* Search Section */}
+        <div className='p-3 md:p-4 border-b'>
+          <div className='relative'>
             <input
               type='text'
               placeholder='ব্যবহারকারীর নাম, ফোন বা কারণ দিয়ে খুঁজুন'
@@ -178,26 +191,13 @@ const AdminBalanceStatement = () => {
               />
             </svg>
           </div>
-
-          <div className='flex items-center space-x-2'>
-            <select
-              value={pagination.pageSize}
-              onChange={handlePageSizeChange}
-              className='border rounded-md px-2 py-1 md:px-3 md:py-2 text-xs md:text-sm'
-            >
-              <option value='5'>পৃষ্ঠায় ৫টি</option>
-              <option value='10'>পৃষ্ঠায় ১০টি</option>
-              <option value='20'>পৃষ্ঠায় ২০টি</option>
-              <option value='50'>পৃষ্ঠায় ৫০টি</option>
-            </select>
-          </div>
         </div>
 
-        {loading ? (
+        {loading && transactions.length === 0 ? (
           <div className='flex justify-center items-center h-64'>
             <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500'></div>
           </div>
-        ) : filteredTransactions.length === 0 ? (
+        ) : transactions.length === 0 ? (
           <div className='p-6 text-center'>
             <p className='text-gray-500 text-xs md:text-sm'>
               {searchTerm
@@ -209,7 +209,7 @@ const AdminBalanceStatement = () => {
           <>
             {/* Mobile View - Card */}
             <div className='md:hidden space-y-2 p-2'>
-              {filteredTransactions.map(tx => (
+              {transactions.map(tx => (
                 <div
                   key={tx.id}
                   className='border rounded-lg p-2 text-xs cursor-pointer hover:bg-gray-50'
@@ -253,7 +253,6 @@ const AdminBalanceStatement = () => {
                     <th className='px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider'>
                       তারিখ
                     </th>
-
                     <th className='px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider'>
                       পরিমাণ
                     </th>
@@ -272,12 +271,11 @@ const AdminBalanceStatement = () => {
                   </tr>
                 </thead>
                 <tbody className='bg-white divide-y divide-gray-200'>
-                  {filteredTransactions.map(tx => (
+                  {transactions.map(tx => (
                     <tr key={tx.id}>
                       <td className='px-4 py-4 whitespace-nowrap text-gray-500'>
                         {formatDate(tx.createdAt)}
                       </td>
-
                       <td
                         className={`px-4 py-4 whitespace-nowrap font-medium ${
                           parseFloat(tx.amount) < 0 ? 'text-red-600' : 'text-green-600'
@@ -286,7 +284,9 @@ const AdminBalanceStatement = () => {
                         {parseFloat(tx.amount) > 0 ? '+' : ''}
                         {parseFloat(tx.amount).toFixed(2)}৳
                       </td>
-                      <td className='px-4 py-4 whitespace-nowrap text-gray-900'>{tx.reason}</td>
+                      <td className='px-4 py-4 whitespace-nowrap text-gray-900 truncate'>
+                        {tx.reason}
+                      </td>
                       <td className='px-4 py-4 whitespace-nowrap text-gray-500'>{tx.userName}</td>
                       <td className='px-4 py-4 whitespace-nowrap text-gray-500'>
                         {tx.userPhoneNo}
@@ -305,110 +305,18 @@ const AdminBalanceStatement = () => {
               </table>
             </div>
 
-            {/* Pagination */}
-            {pagination.totalCount > pagination.pageSize && (
-              <div className='bg-gray-50 px-3 py-2 md:px-4 md:py-3 flex items-center justify-between border-t border-gray-200'>
-                <div className='flex-1 flex justify-between sm:hidden'>
-                  <button
-                    onClick={() => handlePageChange(pagination.currentPage - 1)}
-                    disabled={pagination.currentPage === 1}
-                    className='relative inline-flex items-center px-3 py-1 text-xs border border-gray-300 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50'
-                  >
-                    পূর্ববর্তী
-                  </button>
-                  <button
-                    onClick={() => handlePageChange(pagination.currentPage + 1)}
-                    disabled={pagination.currentPage * pagination.pageSize >= pagination.totalCount}
-                    className='ml-3 relative inline-flex items-center px-3 py-1 text-xs border border-gray-300 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50'
-                  >
-                    পরবর্তী
-                  </button>
-                </div>
+            {/* Loading More Indicator */}
+            {loadingMore && (
+              <div className='flex justify-center items-center py-4'>
+                <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500'></div>
+                <span className='ml-2 text-sm text-gray-600'>আরো লোড হচ্ছে...</span>
+              </div>
+            )}
 
-                <div className='hidden sm:flex-1 sm:flex sm:items-center sm:justify-between'>
-                  <div>
-                    <p className='text-sm text-gray-700'>
-                      দেখানো হচ্ছে{' '}
-                      <span className='font-medium'>
-                        {(pagination.currentPage - 1) * pagination.pageSize + 1}
-                      </span>{' '}
-                      থেকে{' '}
-                      <span className='font-medium'>
-                        {Math.min(
-                          pagination.currentPage * pagination.pageSize,
-                          pagination.totalCount
-                        )}
-                      </span>{' '}
-                      পর্যন্ত, মোট <span className='font-medium'>{pagination.totalCount}</span> টি
-                      লেনদেন
-                    </p>
-                  </div>
-                  <div>
-                    <nav className='relative z-0 inline-flex rounded-md shadow-sm -space-x-px'>
-                      <button
-                        onClick={() => handlePageChange(pagination.currentPage - 1)}
-                        disabled={pagination.currentPage === 1}
-                        className='relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50'
-                      >
-                        <span className='sr-only'>Previous</span>
-                        <svg
-                          className='h-5 w-5'
-                          xmlns='http://www.w3.org/2000/svg'
-                          viewBox='0 0 20 20'
-                          fill='currentColor'
-                          aria-hidden='true'
-                        >
-                          <path
-                            fillRule='evenodd'
-                            d='M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z'
-                            clipRule='evenodd'
-                          />
-                        </svg>
-                      </button>
-                      {Array.from(
-                        { length: Math.ceil(pagination.totalCount / pagination.pageSize) },
-                        (_, i) => {
-                          const pageNum = i + 1
-                          return (
-                            <button
-                              key={pageNum}
-                              onClick={() => handlePageChange(pageNum)}
-                              className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                                pageNum === pagination.currentPage
-                                  ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                                  : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                              }`}
-                            >
-                              {pageNum}
-                            </button>
-                          )
-                        }
-                      ).slice(0, 5)}
-                      <button
-                        onClick={() => handlePageChange(pagination.currentPage + 1)}
-                        disabled={
-                          pagination.currentPage * pagination.pageSize >= pagination.totalCount
-                        }
-                        className='relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50'
-                      >
-                        <span className='sr-only'>Next</span>
-                        <svg
-                          className='h-5 w-5'
-                          xmlns='http://www.w3.org/2000/svg'
-                          viewBox='0 0 20 20'
-                          fill='currentColor'
-                          aria-hidden='true'
-                        >
-                          <path
-                            fillRule='evenodd'
-                            d='M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z'
-                            clipRule='evenodd'
-                          />
-                        </svg>
-                      </button>
-                    </nav>
-                  </div>
-                </div>
+            {/* No More Data Indicator */}
+            {!hasMore && transactions.length > 0 && (
+              <div className='text-center py-4 border-t'>
+                <p className='text-sm text-gray-500'></p>
               </div>
             )}
           </>

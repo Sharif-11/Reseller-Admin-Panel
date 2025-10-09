@@ -5,7 +5,6 @@ import { useAuth } from '../Hooks/useAuth'
 import { loadingText } from '../utils/utils'
 import './AdminHeader.css'
 import NotificationDropdown from './Notification/Notification'
-import { notificationService } from './Notification/notification.services'
 
 const AdminHeader = ({
   isSidebarOpen,
@@ -21,38 +20,12 @@ const AdminHeader = ({
   const navigate = useNavigate()
   const { user, setUser } = useAuth()
 
-  // Fetch unread count on component mount and when user changes
-  useEffect(() => {
-    if (user?.userId) {
-      fetchUnreadCount()
-
-      // Set up interval to periodically check for new notifications
-      const interval = setInterval(fetchUnreadCount, 30000) // Check every 30 seconds
-
-      return () => clearInterval(interval)
-    }
-  }, [user?.userId])
-
-  const fetchUnreadCount = async () => {
-    if (!user?.userId) return
-    try {
-      const count = await notificationService.getUnreadCount(user.userId)
-      setUnreadCount(3)
-    } catch (error) {
-      console.error('Error fetching unread count:', error)
-    }
-  }
-
   const toggleDropdown = () => {
     setIsDropdownOpen(!isDropdownOpen)
   }
 
   const toggleNotifications = () => {
     setNotificationOpen(!notificationOpen)
-    if (!notificationOpen) {
-      // Refresh notifications when opening
-      fetchUnreadCount()
-    }
   }
 
   const handleMarkAllAsRead = () => {
@@ -188,6 +161,7 @@ const AdminHeader = ({
                 isOpen={notificationOpen}
                 onClose={() => setNotificationOpen(false)}
                 onMarkAllAsRead={handleMarkAllAsRead}
+                setUnreadCount={setUnreadCount}
               />
             </div>
 

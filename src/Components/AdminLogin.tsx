@@ -7,6 +7,7 @@ import { authService } from '../Api/auth.api'
 import logo from '../assets/shopbd_logo.png'
 import { localStorageAvailable } from '../Axios/baseUrl'
 import { useAuth } from '../Hooks/useAuth'
+
 import { DASHBOARD_KEY } from './DashboardTracker'
 import Loading from './Loading'
 
@@ -52,6 +53,12 @@ const AdminLogin = () => {
         const result = await authService.verifyLogin()
         if (result?.success) {
           setUser(result.data || null)
+          console.log({
+            userId: result.data?.userId,
+            role: result.data?.role,
+            token: result.data?.token,
+          })
+
           //please navigate to the route from where the user came
           // If user is already logged in, redirect to dashboard
           const previousPath = localStorage.getItem(DASHBOARD_KEY)
